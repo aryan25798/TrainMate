@@ -1,0 +1,3 @@
+# TrainMate
+User-agent: *
+Disallow:

@@ -1,0 +1,39 @@
+# ==========================================
+# TrainMate - Git Ignore Configuration
+# ==========================================
+
+# Node & Angular Frontend
+frontend/trainmate-ui/node_modules/
+frontend/trainmate-ui/.angular/
+frontend/trainmate-ui/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Java & Maven Backend
+backend/trainmate-backend/target/
+backend/trainmate-backend/.mvn/timing.properties
+*.class
+*.jar
+*.war
+*.ear
+
+# IDE & Tooling
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS & Temp Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.tmp
+*.bak
