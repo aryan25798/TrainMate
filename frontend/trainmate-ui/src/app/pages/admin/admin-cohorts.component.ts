@@ -94,7 +94,7 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let c of displayedCohorts">
+              <tr *ngFor="let c of filteredCohorts">
                 <td class="fw-bold text-dark text-nowrap">{{ c.cohortCode }}</td>
                 <td class="text-nowrap">{{ c.serviceLine }}</td>
                 <td><span class="badge-tag">{{ c.requiredSkill }}</span></td>
@@ -341,16 +341,21 @@ export class AdminCohortsComponent implements OnInit {
 
   onStatusChange(c: Cohort, newStatus: string): void {
     if (c.status === newStatus) return;
+    const previousStatus = c.status;
+    c.status = newStatus as any; // optimistic update
     this.cohortService.updateCohortStatus(c.id, newStatus).subscribe({
       next: res => {
         if (res.success) {
-          c.status = newStatus as any;
           this.toastService.info(`Cohort ${c.cohortCode} status changed to ${newStatus}`);
           this.loadCohorts();
+        } else {
+          c.status = previousStatus; // rollback
+          this.toastService.error(`Failed to update status.`);
         }
       },
-      error: () => {
-        this.toastService.error(`Failed to update status.`);
+      error: (err) => {
+        c.status = previousStatus; // rollback optimistic update
+        this.toastService.error(err?.error?.message || `Failed to update status.`);
       }
     });
   }

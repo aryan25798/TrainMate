@@ -17,7 +17,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findByCohort(com.trainmate.entity.Cohort cohort);
     void deleteByCohort(com.trainmate.entity.Cohort cohort);
     
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query("UPDATE Notification n SET n.isRead = true WHERE n.receiverUser.id = :userId AND n.isRead = false")
     int markAllAsReadByUserId(@Param("userId") Long userId);
