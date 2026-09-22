@@ -45,7 +45,7 @@ public class CohortController {
         return ResponseEntity.ok(ApiResponse.success("Cohort updated successfully", data));
     }
 
-    @PatchMapping("/{cohortId}/status")
+    @RequestMapping(value = "/{cohortId}/status", method = {RequestMethod.PATCH, RequestMethod.PUT})
     public ResponseEntity<ApiResponse<CohortResponse>> updateCohortStatus(
             @PathVariable Long cohortId,
             @RequestParam String status) {

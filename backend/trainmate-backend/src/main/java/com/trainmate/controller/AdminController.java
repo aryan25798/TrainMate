@@ -75,7 +75,7 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("Trainer updated successfully", updated));
     }
 
-    @PatchMapping("/trainers/{trainerId}/status")
+    @RequestMapping(value = "/trainers/{trainerId}/status", method = {RequestMethod.PATCH, RequestMethod.PUT})
     public ResponseEntity<ApiResponse<TrainerResponse>> toggleTrainerAvailability(
             @PathVariable Long trainerId,
             @RequestParam boolean available) {
