@@ -47,7 +47,7 @@ import { AuthService } from './services/auth.service';
       <div class="app-container">
         <app-sidebar [isOpen]="sidebarOpen" (linkClicked)="sidebarOpen = false"></app-sidebar>
         
-        <div class="d-flex flex-column flex-grow-1 overflow-hidden">
+        <div class="d-flex flex-column flex-grow-1" style="min-width: 0; overflow-x: hidden;">
           
           <!-- Desktop Corporate Header Bar -->
           <header class="top-header-bar">

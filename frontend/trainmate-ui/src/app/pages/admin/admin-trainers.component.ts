@@ -60,71 +60,71 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
           <table class="table table-hover align-middle">
             <thead>
               <tr>
-                <th>Trainer</th>
+                <th class="text-nowrap">Trainer</th>
                 <th>Skills</th>
-                <th>Experience</th>
-                <th>Availability Window</th>
-                <th>Workload Capacity</th>
-                <th>Prev Cohorts</th>
-                <th>Status</th>
-                <th class="text-end">Actions</th>
+                <th class="text-nowrap">Experience</th>
+                <th class="text-nowrap">Availability Window</th>
+                <th class="text-nowrap">Workload Capacity</th>
+                <th class="text-nowrap">Prev Cohorts</th>
+                <th class="text-nowrap">Status</th>
+                <th class="text-end text-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let t of filteredTrainers">
-                <td>
-                  <div class="d-flex align-items-center gap-2.5">
-                    <div class="user-avatar" style="width: 36px; height: 36px; font-size: 0.95rem; border-radius: 10px;">
+                <td class="text-nowrap">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="user-avatar" style="width: 34px; height: 34px; font-size: 0.9rem;">
                       {{ t.name.charAt(0) }}
-                    </div>
+                    </span>
                     <div>
-                      <div class="fw-bold text-dark" style="font-size: 0.95rem;">{{ t.name }}</div>
+                      <div class="fw-semibold text-dark" style="font-size: 0.9rem;">{{ t.name }}</div>
                       <small class="text-muted">{{ t.employeeId }}</small>
                     </div>
                   </div>
                 </td>
-                <td style="max-width: 240px;">
+                <td style="min-width: 180px; max-width: 260px;">
                   <span class="badge-tag" *ngFor="let s of t.skills">{{ s }}</span>
                 </td>
-                <td><span class="fw-semibold">{{ t.experienceYears }}</span> yrs</td>
-                <td>
-                  <small class="d-block">{{ t.availableFrom }}</small>
+                <td class="text-nowrap"><span class="fw-semibold">{{ t.experienceYears }}</span> yrs</td>
+                <td class="text-nowrap">
+                  <div class="fw-medium small text-dark">{{ t.availableFrom }}</div>
                   <small class="text-muted">to {{ t.availableTill }}</small>
                 </td>
-                <td>
-                  <div class="d-flex align-items-center gap-2" style="min-width: 120px;">
-                    <div class="progress flex-grow-1" style="height: 8px;">
+                <td class="text-nowrap">
+                  <div class="d-flex align-items-center gap-2" style="min-width: 130px;">
+                    <div class="progress flex-grow-1" style="height: 7px; border-radius: 6px; background-color: #f1f5f9;">
                       <div
-                        class="progress-bar"
+                        class="progress-bar rounded-pill"
                         [ngClass]="getWorkloadBarClass(t.currentWorkload, t.maximumWorkload)"
                         [style.width.%]="(t.currentWorkload / t.maximumWorkload) * 100">
                       </div>
                     </div>
-                    <span class="fw-semibold small">{{ t.workloadRatio }}</span>
+                    <span class="fw-semibold small text-dark">{{ t.workloadRatio }}</span>
                   </div>
                 </td>
-                <td><span class="badge bg-light text-dark border">{{ t.previouslyHandledCohorts }}</span></td>
-                <td>
+                <td class="text-nowrap"><span class="badge bg-light text-dark border">{{ t.previouslyHandledCohorts }}</span></td>
+                <td class="text-nowrap">
                   <span
-                    class="badge"
-                    [ngClass]="t.status === 'AVAILABLE' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'">
+                    class="badge-status"
+                    [ngClass]="t.status === 'AVAILABLE' ? 'badge-assigned' : 'badge-unassigned'">
                     {{ t.status }}
                   </span>
                 </td>
-                <td class="text-end">
-                  <div class="d-flex justify-content-end gap-1">
-                    <button class="btn btn-sm btn-outline-secondary" (click)="openEditTrainer(t)" title="Edit Trainer Details">
+                <td class="text-end text-nowrap">
+                  <div class="action-btn-group">
+                    <button class="action-btn btn-edit" (click)="openEditTrainer(t)" title="Edit Trainer Details">
                       <i class="bi bi-pencil"></i>
                     </button>
                     <button
-                      class="btn btn-sm"
-                      [ngClass]="t.status === 'AVAILABLE' ? 'btn-outline-warning' : 'btn-outline-success'"
+                      class="action-btn"
+                      [ngClass]="t.status === 'AVAILABLE' ? 'btn-reallocate' : 'btn-view'"
                       (click)="toggleAvailability(t)"
                       [title]="t.status === 'AVAILABLE' ? 'Deactivate (Set Unavailable)' : 'Activate (Set Available)'"
                     >
                       <i class="bi" [ngClass]="t.status === 'AVAILABLE' ? 'bi-pause-circle' : 'bi-play-circle'"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" (click)="trainerToDelete = t" title="Delete Trainer">
+                    <button class="action-btn btn-delete" (click)="trainerToDelete = t" title="Delete Trainer">
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>

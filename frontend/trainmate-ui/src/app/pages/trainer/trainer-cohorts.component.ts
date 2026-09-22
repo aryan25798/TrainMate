@@ -53,33 +53,36 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
           <table class="table table-hover align-middle">
             <thead>
               <tr>
-                <th>Cohort Code</th>
+                <th class="text-nowrap">Cohort Code</th>
                 <th>Required Skill</th>
-                <th>Coach</th>
-                <th>Trainee Count</th>
-                <th>Start Date</th>
-                <th>End Date</th>
+                <th class="text-nowrap">Coach</th>
+                <th class="text-nowrap">Trainees</th>
+                <th class="text-nowrap">Duration</th>
                 <th>Location</th>
-                <th>Status</th>
-                <th class="text-end">Action</th>
+                <th class="text-nowrap">Status</th>
+                <th class="text-end text-nowrap">Action</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let c of filteredCohorts">
-                <td class="fw-bold text-dark">{{ c.cohortCode }}</td>
+                <td class="fw-bold text-dark text-nowrap">{{ c.cohortCode }}</td>
                 <td><span class="badge-tag">{{ c.requiredSkill }}</span></td>
-                <td>{{ c.coachName || 'N/A' }}</td>
-                <td>{{ c.numberOfTrainees }}</td>
-                <td>{{ c.startDate }}</td>
-                <td>{{ c.endDate }}</td>
-                <td>{{ c.location }}</td>
-                <td>
+                <td class="text-nowrap">{{ c.coachName || 'N/A' }}</td>
+                <td class="text-nowrap">{{ c.numberOfTrainees }}</td>
+                <td class="text-nowrap">
+                  <div class="fw-medium small text-dark">{{ c.startDate }}</div>
+                  <small class="text-muted">{{ c.endDate }}</small>
+                </td>
+                <td class="text-nowrap">{{ c.location }}</td>
+                <td class="text-nowrap">
                   <span class="badge-status" [ngClass]="getStatusBadgeClass(c.status)">{{ c.status }}</span>
                 </td>
-                <td class="text-end">
-                  <button class="btn btn-sm btn-outline-primary" (click)="selectedCohort = c">
-                    <i class="bi bi-eye"></i> Details
-                  </button>
+                <td class="text-end text-nowrap">
+                  <div class="action-btn-group">
+                    <button class="action-btn btn-view" title="View Cohort Details" (click)="selectedCohort = c">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                  </div>
                 </td>
               </tr>
               <tr *ngIf="filteredCohorts.length === 0">

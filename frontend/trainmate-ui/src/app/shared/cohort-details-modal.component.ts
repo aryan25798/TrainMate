@@ -8,7 +8,7 @@ import { Cohort } from '../models/models';
   imports: [CommonModule],
   template: `
     <div class="modal-overlay" *ngIf="cohort" (click)="onBackdropClick($event)">
-      <div class="modal-card modal-content-box" (click)="$event.stopPropagation()">
+      <div class="modal-card modal-lg" (click)="$event.stopPropagation()">
         <!-- Header -->
         <div class="modal-header d-flex justify-content-between align-items-center">
           <div class="d-flex align-items-center gap-2">

@@ -110,12 +110,12 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
                       name="requiredSkill"
                       required
                     />
-                    <div class="d-flex align-items-center gap-1 mt-2">
+                    <div class="d-flex flex-wrap align-items-center gap-1.5 mt-2">
                       <small class="text-muted me-1">Quick skill presets:</small>
-                      <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" (click)="manualForm.requiredSkill = 'Java, Spring Boot'">Java, Spring Boot</button>
-                      <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" (click)="manualForm.requiredSkill = 'Angular, JavaScript'">Angular, JavaScript</button>
-                      <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" (click)="manualForm.requiredSkill = 'Spring Boot, Microservices'">Spring Boot, Microservices</button>
-                      <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" (click)="manualForm.requiredSkill = 'Python, Django'">Python, Django</button>
+                      <button type="button" class="preset-chip" (click)="manualForm.requiredSkill = 'Java, Spring Boot'">Java, Spring Boot</button>
+                      <button type="button" class="preset-chip" (click)="manualForm.requiredSkill = 'Angular, JavaScript'">Angular, JavaScript</button>
+                      <button type="button" class="preset-chip" (click)="manualForm.requiredSkill = 'Spring Boot, Microservices'">Spring Boot, Microservices</button>
+                      <button type="button" class="preset-chip" (click)="manualForm.requiredSkill = 'Python, Django'">Python, Django</button>
                     </div>
                   </div>
 
@@ -254,16 +254,18 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
           </div>
         </div>
 
-        <!-- Sidebar Explainer for Interview -->
+        <!-- Sidebar Explainer for Allocation Rules -->
         <div class="col-lg-4">
           <div class="content-card">
             <div class="content-card-header">
-              <h3 class="content-card-title">How Allocation Works (Demo)</h3>
+              <h3 class="content-card-title">
+                <i class="bi bi-cpu-fill text-primary me-2"></i>100-Point Allocation Matrix
+              </h3>
             </div>
             <div class="p-3 small text-secondary">
-              <p class="mb-2">This 100-point algorithm calculates suitability deterministically:</p>
+              <p class="mb-2">Deterministic algorithmic scoring rules applied on each cohort:</p>
               <div class="p-2 bg-light rounded-2 border mb-2">
-                <strong>1. Skill Match (40 pts):</strong> Proportional match to required skills. Must match $\ge$ 1.
+                <strong>1. Skill Match (40 pts):</strong> Proportional match to required skills. Must match at least 1 skill.
               </div>
               <div class="p-2 bg-light rounded-2 border mb-2">
                 <strong>2. Availability (20 pts):</strong> Trainer must cover the entire start-to-end window.
@@ -272,12 +274,12 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
                 <strong>3. Current Workload (15 pts):</strong> Less workload gets more points. Excluded if at capacity.
               </div>
               <div class="p-2 bg-light rounded-2 border mb-2">
-                <strong>4. Experience (15 pts):</strong> 0-2y: 5, 3-5y: 10, 6+y: 15.
+                <strong>4. Experience (15 pts):</strong> 0-2 yrs: 5 pts, 3-5 yrs: 10 pts, 6+ yrs: 15 pts.
               </div>
               <div class="p-2 bg-light rounded-2 border mb-3">
-                <strong>5. Previous Cohorts (10 pts):</strong> 0-2: 3, 3-5: 6, 6+: 10.
+                <strong>5. Previous Cohorts (10 pts):</strong> 0-2 cohorts: 3 pts, 3-5: 6 pts, 6+: 10 pts.
               </div>
-              <small class="text-muted">In case of a tie, the trainer with lower workload wins!</small>
+              <small class="text-muted">In case of a tie, the trainer with the lower concurrent workload is selected.</small>
             </div>
           </div>
         </div>
@@ -447,8 +449,8 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
                           </span>
                         </td>
                         <td>
-                          <button type="button" class="btn btn-xs btn-outline-primary" (click)="viewResultDetails = c">
-                            <i class="bi bi-calculator me-1"></i> Details
+                          <button type="button" class="btn btn-sm btn-outline-primary px-2 py-1" (click)="viewResultDetails = c">
+                            <i class="bi bi-eye me-1"></i> Details
                           </button>
                         </td>
                       </tr>

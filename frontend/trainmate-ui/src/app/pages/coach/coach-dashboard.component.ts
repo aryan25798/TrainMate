@@ -75,42 +75,43 @@ import { CreateCohortModalComponent } from '../../shared/create-cohort-modal.com
           <table class="table table-hover align-middle">
             <thead>
               <tr>
-                <th>Cohort Code</th>
+                <th class="text-nowrap">Cohort Code</th>
                 <th>Required Skill</th>
                 <th>Trainer</th>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th>Status</th>
-                <th class="text-end">Action</th>
+                <th class="text-nowrap">Duration</th>
+                <th class="text-nowrap">Status</th>
+                <th class="text-end text-nowrap">Action</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let c of recentCohorts">
-                <td class="fw-bold text-dark">{{ c.cohortCode }}</td>
+                <td class="fw-bold text-dark text-nowrap">{{ c.cohortCode }}</td>
                 <td><span class="badge-tag">{{ c.requiredSkill }}</span></td>
-                <td>
+                <td class="text-nowrap">
                   <div *ngIf="c.assignedTrainerName" class="d-flex align-items-center gap-2">
-                    <div class="user-avatar" style="width: 28px; height: 28px; font-size: 0.75rem; border-radius: 8px;">
-                      {{ c.assignedTrainerName.charAt(0) }}
-                    </div>
-                    <span class="fw-semibold text-primary">{{ c.assignedTrainerName }}</span>
+                    <span class="trainer-avatar">{{ c.assignedTrainerName.charAt(0) }}</span>
+                    <span class="fw-semibold text-dark" style="font-size: 0.885rem;">{{ c.assignedTrainerName }}</span>
                   </div>
                   <span *ngIf="!c.assignedTrainerName" class="badge-status badge-unassigned">Unassigned</span>
                 </td>
-                <td>{{ c.startDate }}</td>
-                <td>{{ c.endDate }}</td>
-                <td>
+                <td class="text-nowrap">
+                  <div class="fw-medium small text-dark">{{ c.startDate }}</div>
+                  <small class="text-muted">{{ c.endDate }}</small>
+                </td>
+                <td class="text-nowrap">
                   <span class="badge-status" [ngClass]="getStatusBadgeClass(c.status)">{{ c.status }}</span>
                 </td>
-                <td class="text-end">
-                  <button class="btn btn-sm btn-outline-primary" (click)="selectedCohort = c">
-                    <i class="bi bi-eye"></i> Details
-                  </button>
+                <td class="text-end text-nowrap">
+                  <div class="action-btn-group">
+                    <button class="action-btn btn-view" title="View Cohort Details" (click)="selectedCohort = c">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                  </div>
                 </td>
               </tr>
               <tr *ngIf="recentCohorts.length === 0">
-                <td colspan="7" class="text-center py-4 text-muted">
-                  No cohorts found. Upload your first cohort using the <strong>Upload Cohort</strong> option.
+                <td colspan="6" class="text-center py-4 text-muted">
+                  No cohorts found. Create or upload your first cohort using the buttons above.
                 </td>
               </tr>
             </tbody>

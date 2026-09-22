@@ -10,8 +10,8 @@ import { AuthService } from '../services/auth.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="modal-overlay" *ngIf="cohort">
-      <div class="modal-card">
+    <div class="modal-overlay" *ngIf="cohort" (click)="close.emit()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h5 class="modal-title fs-5 fw-bold mb-0">
             <i class="bi bi-arrow-left-right text-primary me-2"></i>Change Trainer - {{ cohort.cohortCode }}

@@ -74,35 +74,33 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
           <table class="table table-hover align-middle">
             <thead>
               <tr>
-                <th>Cohort Code</th>
+                <th class="text-nowrap">Cohort Code</th>
                 <th>Service Line</th>
                 <th>Required Skill</th>
-                <th>Trainees</th>
-                <th>Duration</th>
+                <th class="text-nowrap">Trainees</th>
+                <th class="text-nowrap">Duration</th>
                 <th>Vertical / Loc</th>
                 <th>Assigned Trainer</th>
-                <th>Status</th>
-                <th class="text-end">Actions</th>
+                <th class="text-nowrap">Status</th>
+                <th class="text-end text-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let c of filteredCohorts">
-                <td class="fw-bold text-dark">{{ c.cohortCode }}</td>
-                <td>{{ c.serviceLine }}</td>
+                <td class="fw-bold text-dark text-nowrap">{{ c.cohortCode }}</td>
+                <td class="text-nowrap">{{ c.serviceLine }}</td>
                 <td><span class="badge-tag">{{ c.requiredSkill }}</span></td>
-                <td>{{ c.numberOfTrainees }}</td>
-                <td>
-                  <small class="d-block">{{ c.startDate }}</small>
+                <td class="text-nowrap">{{ c.numberOfTrainees }}</td>
+                <td class="text-nowrap">
+                  <div class="fw-medium small text-dark">{{ c.startDate }}</div>
                   <small class="text-muted">{{ c.endDate }}</small>
                 </td>
-                <td>{{ c.vertical }} - {{ c.location }}</td>
-                <td>
+                <td class="text-nowrap">{{ c.vertical }} - {{ c.location }}</td>
+                <td class="text-nowrap">
                   <div *ngIf="c.assignedTrainerName" class="d-flex align-items-center gap-2">
-                    <div class="user-avatar" style="width: 30px; height: 30px; font-size: 0.8rem; border-radius: 8px;">
-                      {{ c.assignedTrainerName.charAt(0) }}
-                    </div>
+                    <span class="trainer-avatar">{{ c.assignedTrainerName.charAt(0) }}</span>
                     <div>
-                      <div class="fw-bold text-primary" style="font-size: 0.9rem;">{{ c.assignedTrainerName }}</div>
+                      <div class="fw-semibold text-dark" style="font-size: 0.885rem;">{{ c.assignedTrainerName }}</div>
                       <span *ngIf="c.allocationScore" class="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0" style="font-size: 0.7rem;">
                         {{ c.allocationScore }} pts
                       </span>
@@ -112,40 +110,38 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
                     Unassigned
                   </span>
                 </td>
-                <td>
-                  <div class="dropdown d-inline-block">
-                    <select
-                      class="form-select form-select-sm fw-semibold"
-                      style="width: 125px; font-size: 11.5px; border-radius: 8px;"
-                      [ngModel]="c.status"
-                      (ngModelChange)="onStatusChange(c, $event)"
-                    >
-                      <option value="PENDING">PENDING</option>
-                      <option value="ASSIGNED">ASSIGNED</option>
-                      <option value="ACTIVE">ACTIVE</option>
-                      <option value="COMPLETED">COMPLETED</option>
-                      <option value="CANCELLED">CANCELLED</option>
-                    </select>
-                  </div>
+                <td class="text-nowrap">
+                  <select
+                    class="status-select"
+                    [ngClass]="'status-' + c.status.toLowerCase()"
+                    [ngModel]="c.status"
+                    (ngModelChange)="onStatusChange(c, $event)"
+                  >
+                    <option value="PENDING">PENDING</option>
+                    <option value="ASSIGNED">ASSIGNED</option>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="COMPLETED">COMPLETED</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                  </select>
                 </td>
-                <td class="text-end">
-                  <div class="d-flex justify-content-end gap-1">
-                    <button class="btn btn-sm btn-outline-primary" title="View 100-Point Breakdown" (click)="selectedCohort = c">
+                <td class="text-end text-nowrap">
+                  <div class="action-btn-group">
+                    <button class="action-btn btn-view" title="View 100-Point Breakdown" (click)="selectedCohort = c">
                       <i class="bi bi-eye"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" title="Edit Cohort" (click)="editingCohort = c">
+                    <button class="action-btn btn-edit" title="Edit Cohort" (click)="editingCohort = c">
                       <i class="bi bi-pencil"></i>
                     </button>
                     <button
-                      class="btn btn-sm btn-outline-warning"
+                      class="action-btn btn-reallocate"
                       title="Re-run 100-Point Allocation Engine"
                       (click)="onReallocate(c)"
                       [disabled]="reallocatingId === c.id"
                     >
-                      <span *ngIf="reallocatingId === c.id" class="spinner-border spinner-border-sm"></span>
+                      <span *ngIf="reallocatingId === c.id" class="spinner-border spinner-border-sm" style="width: 14px; height: 14px;"></span>
                       <i *ngIf="reallocatingId !== c.id" class="bi bi-arrow-repeat"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" title="Delete Cohort" (click)="cohortToDelete = c">
+                    <button class="action-btn btn-delete" title="Delete Cohort" (click)="cohortToDelete = c">
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>

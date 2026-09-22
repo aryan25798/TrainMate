@@ -10,21 +10,21 @@ import { ToastService } from '../services/toast.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);">
-      <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
-          <div class="modal-header border-0 bg-light p-4">
-            <div>
-              <h5 class="modal-title fw-bold text-dark mb-0">
-                <i class="bi" [ngClass]="isEdit ? 'bi-pencil-square text-warning' : 'bi-person-plus-fill text-primary'"></i>
-                {{ isEdit ? 'Edit Trainer: ' + trainer?.name : 'Register New Trainer' }}
-              </h5>
-              <small class="text-muted">{{ isEdit ? 'Update skill proficiencies and workload ceiling' : 'Add a technical trainer to the Cognizant Academy resource pool' }}</small>
-            </div>
-            <button type="button" class="btn-close" (click)="closed.emit()"></button>
+    <div class="modal-overlay" (click)="closed.emit()">
+      <div class="modal-card modal-lg" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title fw-bold text-dark mb-0">
+              <i class="bi" [ngClass]="isEdit ? 'bi-pencil-square text-warning' : 'bi-person-plus-fill text-primary me-2'"></i>
+              {{ isEdit ? 'Edit Trainer: ' + trainer?.name : 'Register New Trainer' }}
+            </h5>
+            <small class="text-muted">{{ isEdit ? 'Update skill proficiencies and workload ceiling' : 'Add a technical trainer to the Cognizant Academy resource pool' }}</small>
           </div>
+          <button type="button" class="btn-close" (click)="closed.emit()"></button>
+        </div>
 
-          <form (ngSubmit)="onSave()" class="modal-body p-4">
+        <form (ngSubmit)="onSave()">
+          <div class="modal-body">
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label fw-semibold small text-muted">Full Name *</label>
@@ -119,18 +119,18 @@ import { ToastService } from '../services/toast.service';
             <div *ngIf="errorMessage" class="alert alert-danger mt-3 py-2 small">
               <i class="bi bi-exclamation-circle-fill me-1"></i> {{ errorMessage }}
             </div>
+          </div>
 
-            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-              <button type="button" class="btn btn-light px-3" (click)="closed.emit()" [disabled]="isSubmitting">
-                Cancel
-              </button>
-              <button type="submit" class="btn btn-primary px-4" [disabled]="isSubmitting">
-                <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-1"></span>
-                {{ isEdit ? 'Save Changes' : 'Add Trainer' }}
-              </button>
-            </div>
-          </form>
-        </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary-custom" (click)="closed.emit()" [disabled]="isSubmitting">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary-custom" [disabled]="isSubmitting">
+              <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-1"></span>
+              {{ isEdit ? 'Save Changes' : 'Add Trainer' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   `

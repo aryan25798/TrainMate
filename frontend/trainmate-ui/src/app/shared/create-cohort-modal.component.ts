@@ -10,8 +10,8 @@ import { Cohort, CreateCohortRequest } from '../models/models';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="modal-overlay">
-      <div class="modal-card" style="max-width: 650px;">
+    <div class="modal-overlay" (click)="close.emit()">
+      <div class="modal-card modal-lg" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <div class="d-flex align-items-center gap-2">
             <i class="bi bi-plus-circle-fill text-primary fs-5"></i>
