@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/notifications")
+@RequestMapping({"/api/notifications", "/notifications"})
 @Tag(name = "Notifications", description = "Notification/mailbox endpoints")
 public class NotificationController {
 

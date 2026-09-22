@@ -12,7 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
-@RequestMapping("/coaches")
+@RequestMapping({"/api/coach", "/coach"})
 public class CoachController {
 
     private final CoachService coachService;

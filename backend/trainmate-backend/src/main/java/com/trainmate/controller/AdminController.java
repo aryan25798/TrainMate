@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/admin")
+@RequestMapping({"/api/admin", "/admin"})
 public class AdminController {
 
     private final AdminService adminService;

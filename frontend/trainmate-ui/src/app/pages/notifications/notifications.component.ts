@@ -105,10 +105,12 @@ export class NotificationsComponent implements OnInit {
     if (!user) return;
 
     this.markingRead = true;
+    // Optimistically mark all notifications as read in UI
+    this.mails.forEach(m => m.isRead = true);
+
     this.notificationService.markAllAsRead(user.userId).subscribe({
       next: () => {
         this.markingRead = false;
-        this.mails.forEach(m => m.isRead = true);
       },
       error: () => {
         this.markingRead = false;
