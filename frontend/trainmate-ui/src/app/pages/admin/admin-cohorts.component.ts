@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../services/admin.service';
 import { CohortService } from '../../services/cohort.service';
 import { ToastService } from '../../services/toast.service';
-import { Cohort } from '../../models/models';
+import { Cohort, PagedResponse } from '../../models/models';
 import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.component';
 import { ReassignModalComponent } from '../../shared/reassign-modal.component';
 import { EditCohortModalComponent } from '../../shared/edit-cohort-modal.component';
@@ -56,6 +56,7 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
               <option value="ASSIGNED">Assigned</option>
               <option value="UNASSIGNED">Unassigned</option>
               <option value="PENDING">Pending</option>
+              <option value="PROCESSING">Processing</option>
               <option value="ACTIVE">Active</option>
               <option value="COMPLETED">Completed</option>
               <option value="CANCELLED">Cancelled</option>
@@ -67,8 +68,10 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
               <option *ngFor="let sl of serviceLines" [value]="sl">{{ sl }}</option>
             </select>
           </div>
-          <div class="col-md-4 text-md-end text-muted small">
-            Showing {{ filteredCohorts.length }} of {{ cohorts.length }} cohort(s)
+          <div class="col-md-4 text-md-end text-muted small" *ngIf="pagedData">
+            Showing {{ (pagedData.number || 0) * (pagedData.size || 20) + 1 }} to 
+            {{ Math.min((pagedData.number || 0) * (pagedData.size || 20) + (pagedData.numberOfElements || 0), pagedData.totalElements || 0) }} 
+            of {{ pagedData.totalElements || 0 }} cohort(s)
           </div>
         </div>
       </div>
@@ -91,7 +94,7 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let c of filteredCohorts">
+              <tr *ngFor="let c of displayedCohorts">
                 <td class="fw-bold text-dark text-nowrap">{{ c.cohortCode }}</td>
                 <td class="text-nowrap">{{ c.serviceLine }}</td>
                 <td><span class="badge-tag">{{ c.requiredSkill }}</span></td>
@@ -166,6 +169,46 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
           </table>
         </div>
       </div>
+
+      <!-- Pagination Controls -->
+      <div class="content-card p-3" *ngIf="pagedData && pagedData.totalPages > 1">
+        <nav aria-label="Cohort pagination">
+          <ul class="pagination pagination-sm justify-content-center mb-0">
+            <li class="page-item" [class.disabled]="pagedData.first">
+              <button class="page-link" (click)="onPageChange(0)" [disabled]="pagedData.first" aria-label="First">
+                <i class="bi bi-chevron-double-left"></i>
+              </button>
+            </li>
+            <li class="page-item" [class.disabled]="pagedData.first">
+              <button class="page-link" (click)="onPageChange(pagedData.number - 1)" [disabled]="pagedData.first" aria-label="Previous">
+                <i class="bi bi-chevron-left"></i>
+              </button>
+            </li>
+            <li class="page-item" *ngFor="let page of getPageNumbers()" [class.active]="page === pagedData.number">
+              <button class="page-link" (click)="onPageChange(page)">{{ page + 1 }}</button>
+            </li>
+            <li class="page-item" [class.disabled]="pagedData.last">
+              <button class="page-link" (click)="onPageChange(pagedData.number + 1)" [disabled]="pagedData.last" aria-label="Next">
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            </li>
+            <li class="page-item" [class.disabled]="pagedData.last">
+              <button class="page-link" (click)="onPageChange(pagedData.totalPages - 1)" [disabled]="pagedData.last" aria-label="Last">
+                <i class="bi bi-chevron-double-right"></i>
+              </button>
+            </li>
+          </ul>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <select class="form-select form-select-sm w-auto" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange($event)" style="width: 80px;">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+          <small class="text-muted">Page {{ pagedData.number + 1 }} of {{ pagedData.totalPages }}</small>
+        </div>
+      </div>
     </div>
 
     <!-- Cohort Details Modal with 100-Point Score Breakdown -->
@@ -205,16 +248,23 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
 })
 export class AdminCohortsComponent implements OnInit {
   cohorts: Cohort[] = [];
+  displayedCohorts: Cohort[] = [];
+  pagedData: PagedResponse<Cohort> | null = null;
   searchQuery: string = '';
   statusFilter: string = '';
   serviceLineFilter: string = '';
   serviceLines: string[] = [];
+  currentPage: number = 0;
+  pageSize: number = 20;
+  sortBy: string = 'createdDate,desc';
 
   selectedCohortForDetails: Cohort | null = null;
   selectedCohortForReassign: Cohort | null = null;
   editingCohort: Cohort | null = null;
   cohortToDelete: Cohort | null = null;
   reallocatingId: number | null = null;
+
+  Math = Math;
 
   constructor(
     private adminService: AdminService,
@@ -227,14 +277,47 @@ export class AdminCohortsComponent implements OnInit {
   }
 
   loadCohorts(): void {
-    this.adminService.getAllCohorts().subscribe({
+    this.adminService.getAllCohortsPaged(this.currentPage, this.pageSize, this.sortBy).subscribe({
       next: res => {
         if (res.success) {
-          this.cohorts = res.data;
+          this.pagedData = res.data;
+          this.cohorts = res.data.content;
+          this.displayedCohorts = res.data.content;
           this.extractServiceLines();
         }
       }
     });
+  }
+
+  onPageChange(page: number): void {
+    this.currentPage = page;
+    this.loadCohorts();
+  }
+
+  onPageSizeChange(size: number): void {
+    this.pageSize = size;
+    this.currentPage = 0;
+    this.loadCohorts();
+  }
+
+  getPageNumbers(): number[] {
+    if (!this.pagedData) return [];
+    const totalPages = this.pagedData.totalPages;
+    const currentPage = this.pagedData.number;
+    const pages: number[] = [];
+    
+    const maxPagesToShow = 5;
+    let start = Math.max(0, currentPage - Math.floor(maxPagesToShow / 2));
+    let end = Math.min(totalPages, start + maxPagesToShow);
+    
+    if (end - start < maxPagesToShow) {
+      start = Math.max(0, end - maxPagesToShow);
+    }
+    
+    for (let i = start; i < end; i++) {
+      pages.push(i);
+    }
+    return pages;
   }
 
   extractServiceLines(): void {
@@ -343,6 +426,7 @@ export class AdminCohortsComponent implements OnInit {
       case 'ASSIGNED': return 'badge-assigned';
       case 'UNASSIGNED': return 'badge-unassigned';
       case 'PENDING': return 'badge-pending';
+      case 'PROCESSING': return 'badge-processing';
       case 'ACTIVE': return 'badge-active';
       case 'COMPLETED': return 'badge-completed';
       case 'CANCELLED': return 'badge-secondary';

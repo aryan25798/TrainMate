@@ -2,6 +2,8 @@ package com.trainmate.repository;
 
 import com.trainmate.entity.Cohort;
 import com.trainmate.entity.CohortStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -17,6 +19,7 @@ public interface CohortRepository extends JpaRepository<Cohort, Long> {
     List<Cohort> findByCoachUserIdOrderByCreatedDateDesc(Long coachUserId);
     List<Cohort> findByAssignedTrainerIdOrderByStartDateAsc(Long trainerId);
     List<Cohort> findAllByOrderByCreatedDateDesc();
+    Page<Cohort> findAllByOrderByCreatedDateDesc(Pageable pageable);
 
     // Coach Dashboard Counts
     long countByCoachUserId(Long coachUserId);

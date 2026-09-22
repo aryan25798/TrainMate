@@ -35,6 +35,11 @@ public class AllocationScorer {
         }
 
         // 2. Availability Check (must cover cohort dates)
+        if (trainer.getAvailableFrom() == null || trainer.getAvailableTill() == null) {
+            result.setEligible(false);
+            result.setIneligibilityReason("Trainer availability dates are not set");
+            return result;
+        }
         boolean available = !trainer.getAvailableFrom().isAfter(cohort.getStartDate()) &&
                             !trainer.getAvailableTill().isBefore(cohort.getEndDate());
         if (!available) {
@@ -51,7 +56,7 @@ public class AllocationScorer {
                 .collect(Collectors.toSet());
 
         long matchedSkillsCount = requiredSkills.stream()
-                .filter(skill -> trainerSkills.contains(skill.toLowerCase()))
+                .filter(skill -> isSkillMatched(skill, trainerSkills))
                 .count();
 
         if (matchedSkillsCount == 0) {
@@ -73,13 +78,16 @@ public class AllocationScorer {
      * Calculates explainable 100-point score breakdown for display purposes.
      */
     public ScoreBreakdownDTO calculateBreakdown(Trainer trainer, Cohort cohort) {
-        List<String> requiredSkills = parseSkills(cohort.getRequiredSkill());
-        Set<String> trainerSkills = parseSkills(trainer.getSkillSet()).stream()
+        String requiredSkillStr = cohort.getRequiredSkill();
+        String trainerSkillStr = trainer.getSkillSet();
+        
+        List<String> requiredSkills = parseSkills(requiredSkillStr);
+        Set<String> trainerSkills = parseSkills(trainerSkillStr).stream()
                 .map(String::toLowerCase)
                 .collect(Collectors.toSet());
 
         long matchedSkillsCount = requiredSkills.stream()
-                .filter(skill -> trainerSkills.contains(skill.toLowerCase()))
+                .filter(skill -> isSkillMatched(skill, trainerSkills))
                 .count();
 
         // A. Skill Match Score (0 - 40)
@@ -87,9 +95,12 @@ public class AllocationScorer {
                 Math.round(((double) matchedSkillsCount / requiredSkills.size()) * SKILL_WEIGHT * 100.0) / 100.0;
 
         // B. Availability Score (20)
-        boolean available = !trainer.getAvailableFrom().isAfter(cohort.getStartDate()) &&
-                            !trainer.getAvailableTill().isBefore(cohort.getEndDate());
-        double availabilityScore = available ? AVAILABILITY_WEIGHT : 0.0;
+        double availabilityScore = 0.0;
+        if (trainer.getAvailableFrom() != null && trainer.getAvailableTill() != null) {
+            boolean available = !trainer.getAvailableFrom().isAfter(cohort.getStartDate()) &&
+                                !trainer.getAvailableTill().isBefore(cohort.getEndDate());
+            availabilityScore = available ? AVAILABILITY_WEIGHT : 0.0;
+        }
 
         // C. Workload Score (0 - 15)
         double workloadScore = Math.round(
@@ -142,5 +153,18 @@ public class AllocationScorer {
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toList());
+    }
+
+    private boolean isSkillMatched(String requiredSkill, Set<String> trainerSkills) {
+        String req = requiredSkill.toLowerCase().trim();
+        if (trainerSkills.contains(req)) {
+            return true;
+        }
+        for (String ts : trainerSkills) {
+            if (ts.equals(req) || ts.contains(req) || req.contains(ts)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

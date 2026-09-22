@@ -15,4 +15,12 @@ export class NotificationService {
   getNotifications(userId: number): Observable<ApiResponse<NotificationItem[]>> {
     return this.http.get<ApiResponse<NotificationItem[]>>(`${this.apiUrl}/${userId}`);
   }
+
+  markAllAsRead(userId: number): Observable<ApiResponse<number>> {
+    return this.http.put<ApiResponse<number>>(`${this.apiUrl}/${userId}/read-all`, {});
+  }
+
+  getUnreadCount(userId: number): Observable<ApiResponse<number>> {
+    return this.http.get<ApiResponse<number>>(`${this.apiUrl}/${userId}/unread-count`);
+  }
 }

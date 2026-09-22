@@ -163,7 +163,7 @@ export class TrainerFormModalComponent implements OnInit {
     if (this.isEdit && this.trainer) {
       this.formData = {
         name: this.trainer.name,
-        email: 'trainer' + this.trainer.id + '@cognizant.com',
+        email: this.trainer.email || ('trainer' + this.trainer.id + '@cognizant.com'),
         skillSet: this.trainer.skills ? this.trainer.skills.join(', ') : '',
         experienceYears: this.trainer.experienceYears || 0,
         availableFrom: this.trainer.availableFrom,

@@ -121,11 +121,14 @@ public class CohortService {
         Cohort cohort = cohortRepository.findById(cohortId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cohort not found with ID: " + cohortId));
 
-        // Release old trainer's workload if assigned
+        // Release old trainer's workload if assigned (with lock)
         if (cohort.getAssignedTrainer() != null) {
             Trainer oldTrainer = cohort.getAssignedTrainer();
-            oldTrainer.setCurrentWorkload(Math.max(0, oldTrainer.getCurrentWorkload() - 1));
-            trainerRepository.save(oldTrainer);
+            Trainer lockedOldTrainer = trainerRepository.findByIdForUpdate(oldTrainer.getId()).orElse(null);
+            if (lockedOldTrainer != null) {
+                lockedOldTrainer.setCurrentWorkload(Math.max(0, lockedOldTrainer.getCurrentWorkload() - 1));
+                trainerRepository.save(lockedOldTrainer);
+            }
             cohort.setAssignedTrainer(null);
             cohort.setStatus(CohortStatus.PENDING);
             cohortRepository.save(cohort);

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
   AdminDashboard,
@@ -7,7 +7,8 @@ import {
   Cohort,
   CreateTrainerRequest,
   Trainer,
-  TrainerOverrideRequest
+  TrainerOverrideRequest,
+  PagedResponse
 } from '../models/models';
 import { environment } from '../../environments/environment';
 
@@ -27,8 +28,24 @@ export class AdminService {
     return this.http.get<ApiResponse<Cohort[]>>(`${this.apiUrl}/cohorts`);
   }
 
+  getAllCohortsPaged(page: number = 0, size: number = 20, sort: string = 'createdDate,desc'): Observable<ApiResponse<PagedResponse<Cohort>>> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort);
+    return this.http.get<ApiResponse<PagedResponse<Cohort>>>(`${this.apiUrl}/cohorts/paged`, { params });
+  }
+
   getAllTrainers(): Observable<ApiResponse<Trainer[]>> {
     return this.http.get<ApiResponse<Trainer[]>>(`${this.apiUrl}/trainers`);
+  }
+
+  getAllTrainersPaged(page: number = 0, size: number = 20, sort: string = 'id,asc'): Observable<ApiResponse<PagedResponse<Trainer>>> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort);
+    return this.http.get<ApiResponse<PagedResponse<Trainer>>>(`${this.apiUrl}/trainers/paged`, { params });
   }
 
   createTrainer(request: CreateTrainerRequest): Observable<ApiResponse<Trainer>> {

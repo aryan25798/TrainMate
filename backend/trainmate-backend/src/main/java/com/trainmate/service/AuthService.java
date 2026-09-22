@@ -7,6 +7,7 @@ import com.trainmate.entity.Trainer;
 import com.trainmate.entity.User;
 import com.trainmate.repository.TrainerRepository;
 import com.trainmate.repository.UserRepository;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -16,6 +17,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final TrainerRepository trainerRepository;
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public AuthService(UserRepository userRepository, TrainerRepository trainerRepository) {
         this.userRepository = userRepository;
@@ -34,8 +36,18 @@ public class AuthService {
         }
 
         User user = userOpt.get();
+        String rawPassword = request.getPassword().trim();
+        String storedPassword = user.getPassword();
+        boolean matches = false;
+        if (storedPassword != null) {
+            if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2y$")) {
+                matches = passwordEncoder.matches(rawPassword, storedPassword);
+            } else {
+                matches = rawPassword.equals(storedPassword.trim());
+            }
+        }
 
-        if (!request.getPassword().trim().equals(user.getPassword())) {
+        if (!matches) {
             return LoginResponse.failure("Invalid login ID or password");
         }
 

@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 
 @RestController
-@RequestMapping("/api/cohorts")
+@RequestMapping("/cohorts")
 public class CohortController {
 
     private final CohortService cohortService;

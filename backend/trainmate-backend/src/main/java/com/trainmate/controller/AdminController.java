@@ -2,7 +2,12 @@ package com.trainmate.controller;
 
 import com.trainmate.dto.*;
 import com.trainmate.service.AdminService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +17,7 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping("/admin")
 public class AdminController {
 
     private final AdminService adminService;
@@ -33,10 +38,26 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("All cohorts retrieved successfully", cohorts));
     }
 
+    @Operation(summary = "Get all cohorts with pagination")
+    @GetMapping("/cohorts/paged")
+    public ResponseEntity<ApiResponse<Page<CohortResponse>>> getAllCohortsPaged(
+            @PageableDefault(size = 20, sort = "createdDate") Pageable pageable) {
+        Page<CohortResponse> cohorts = adminService.getAllCohortsPaged(pageable);
+        return ResponseEntity.ok(ApiResponse.success("Cohorts retrieved successfully", cohorts));
+    }
+
     @GetMapping("/trainers")
     public ResponseEntity<ApiResponse<List<TrainerResponse>>> getAllTrainers() {
         List<TrainerResponse> trainers = adminService.getAllTrainers();
         return ResponseEntity.ok(ApiResponse.success("All trainers retrieved successfully", trainers));
+    }
+
+    @Operation(summary = "Get all trainers with pagination")
+    @GetMapping("/trainers/paged")
+    public ResponseEntity<ApiResponse<Page<TrainerResponse>>> getAllTrainersPaged(
+            @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        Page<TrainerResponse> trainers = adminService.getAllTrainersPaged(pageable);
+        return ResponseEntity.ok(ApiResponse.success("Trainers retrieved successfully", trainers));
     }
 
     @PostMapping("/trainers")

@@ -66,17 +66,49 @@ public class TrainerAllocationService {
         TrainerScore winner = eligibleScores.get(0);
         Trainer winnerTrainer = winner.getTrainer();
 
+        // Re-fetch with pessimistic lock to prevent race conditions
+        Trainer lockedTrainer = trainerRepository.findByIdForUpdate(winnerTrainer.getId())
+                .orElseThrow(() -> new IllegalStateException("Trainer no longer available: " + winnerTrainer.getId()));
+
+        // Double-check eligibility after locking
+        TrainerScore recheckScore = allocationScorer.evaluate(lockedTrainer, cohort);
+        if (!recheckScore.isEligible()) {
+            // Try next best trainer
+            for (int i = 1; i < eligibleScores.size(); i++) {
+                TrainerScore next = eligibleScores.get(i);
+                Trainer nextTrainer = trainerRepository.findByIdForUpdate(next.getTrainer().getId()).orElse(null);
+                if (nextTrainer != null) {
+                    TrainerScore nextRecheck = allocationScorer.evaluate(nextTrainer, cohort);
+                    if (nextRecheck.isEligible()) {
+                        winner = nextRecheck;
+                        lockedTrainer = nextTrainer;
+                        break;
+                    }
+                }
+            }
+            if (!recheckScore.isEligible() && winner.getTrainer().getId().equals(winnerTrainer.getId())) {
+                cohort.setStatus(CohortStatus.UNASSIGNED);
+                cohort.setAssignedTrainer(null);
+                cohortRepository.save(cohort);
+                notificationService.notifyAllocationFailed(cohort);
+                TrainerScore noMatch = new TrainerScore(null);
+                noMatch.setEligible(false);
+                noMatch.setIneligibilityReason("No eligible trainer available after re-check");
+                return noMatch;
+            }
+        }
+
         // Assign directly to cohort
-        cohort.setAssignedTrainer(winnerTrainer);
+        cohort.setAssignedTrainer(lockedTrainer);
         cohort.setStatus(CohortStatus.ASSIGNED);
         cohortRepository.save(cohort);
 
         // Increment trainer workload
-        winnerTrainer.setCurrentWorkload(winnerTrainer.getCurrentWorkload() + 1);
-        trainerRepository.save(winnerTrainer);
+        lockedTrainer.setCurrentWorkload(lockedTrainer.getCurrentWorkload() + 1);
+        trainerRepository.save(lockedTrainer);
 
         // Notify Coach and Trainer via internal mail
-        notificationService.notifyTrainerAssigned(cohort, winnerTrainer);
+        notificationService.notifyTrainerAssigned(cohort, lockedTrainer);
 
         return winner;
     }

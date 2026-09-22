@@ -96,7 +96,7 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
                 </td>
               </tr>
               <tr *ngIf="cohorts.length === 0">
-                <td colspan="9" class="text-center py-4 text-muted">
+                <td colspan="8" class="text-center py-4 text-muted">
                   No cohorts have been assigned to you yet.
                 </td>
               </tr>

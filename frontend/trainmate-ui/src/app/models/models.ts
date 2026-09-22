@@ -32,6 +32,18 @@ export interface ApiResponse<T> {
   errors?: string[];
 }
 
+export interface PagedResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+  numberOfElements: number;
+  empty: boolean;
+}
+
 export interface ScoreBreakdown {
   skillScore: number;
   availabilityScore: number;
@@ -53,7 +65,7 @@ export interface Cohort {
   endDate: string;
   vertical: string;
   location: string;
-  status: 'PENDING' | 'PROCESSING' | 'ASSIGNED' | 'UNASSIGNED' | 'ACTIVE' | 'COMPLETED';
+  status: 'PENDING' | 'PROCESSING' | 'ASSIGNED' | 'UNASSIGNED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
   coachId?: number;
   coachName?: string;
   coachEmployeeId?: string;
@@ -72,6 +84,7 @@ export interface Trainer {
   id: number;
   userId: number;
   name: string;
+  email?: string;
   employeeId: string;
   serviceLine: string;
   vertical: string;
@@ -141,7 +154,9 @@ export interface NotificationItem {
   receiverRole: string;
   title?: string;
   message: string;
-  createdAt: string;
+  isRead?: boolean;
+  createdAt?: string;
+  createdDate?: string;
 }
 
 export interface TrainerOverrideRequest {

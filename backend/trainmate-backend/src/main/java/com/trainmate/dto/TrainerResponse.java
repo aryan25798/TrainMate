@@ -8,6 +8,7 @@ public class TrainerResponse {
     private Long id;
     private Long userId;
     private String name;
+    private String email;
     private String employeeId;
     private String serviceLine;
     private String vertical;
@@ -45,6 +46,14 @@ public class TrainerResponse {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getEmployeeId() {

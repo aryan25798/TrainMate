@@ -114,8 +114,18 @@ public class NotificationService {
                 n.getReceiverUser().getRole().name(),
                 n.getNotificationType(),
                 n.getMessage(),
-                false, // no read/unread tracking
+                n.getIsRead(),
                 n.getCreatedDate()
         )).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public int markAllAsRead(Long userId) {
+        return notificationRepository.markAllAsReadByUserId(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public long getUnreadCount(Long userId) {
+        return notificationRepository.findByReceiverUserIdAndIsReadFalse(userId).size();
     }
 }

@@ -1,6 +1,7 @@
 package com.trainmate.service;
 
 import com.trainmate.allocation.AllocationScorer;
+import com.trainmate.allocation.TrainerScore;
 import com.trainmate.dto.AdminDashboardResponse;
 import com.trainmate.dto.CohortResponse;
 import com.trainmate.dto.CreateTrainerRequest;
@@ -13,10 +14,14 @@ import com.trainmate.entity.User;
 import com.trainmate.exception.InvalidTrainerException;
 import com.trainmate.exception.ResourceNotFoundException;
 import com.trainmate.repository.CohortRepository;
+import com.trainmate.repository.NotificationRepository;
 import com.trainmate.repository.TrainerRepository;
 import com.trainmate.repository.UserRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +38,17 @@ public class AdminService {
     private final CohortRepository cohortRepository;
     private final TrainerRepository trainerRepository;
     private final UserRepository userRepository;
+    private final NotificationRepository notificationRepository;
     private final CohortService cohortService;
     private final AllocationScorer allocationScorer;
     private final NotificationService notificationService;
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public AdminService(
             CohortRepository cohortRepository,
             TrainerRepository trainerRepository,
             UserRepository userRepository,
+            NotificationRepository notificationRepository,
             CohortService cohortService,
             AllocationScorer allocationScorer,
             NotificationService notificationService
@@ -48,6 +56,7 @@ public class AdminService {
         this.cohortRepository = cohortRepository;
         this.trainerRepository = trainerRepository;
         this.userRepository = userRepository;
+        this.notificationRepository = notificationRepository;
         this.cohortService = cohortService;
         this.allocationScorer = allocationScorer;
         this.notificationService = notificationService;
@@ -85,14 +94,26 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
+    public Page<CohortResponse> getAllCohortsPaged(Pageable pageable) {
+        return cohortRepository.findAllByOrderByCreatedDateDesc(pageable)
+                .map(cohortService::mapToResponse);
+    }
+
+    @Transactional(readOnly = true)
     public List<TrainerResponse> getAllTrainers() {
         return trainerRepository.findAll().stream().map(this::mapToTrainerResponse).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<TrainerResponse> getAllTrainersPaged(Pageable pageable) {
+        return trainerRepository.findAll(pageable).map(this::mapToTrainerResponse);
     }
 
     public TrainerResponse mapToTrainerResponse(Trainer t) {
         TrainerResponse dto = new TrainerResponse();
         dto.setId(t.getId());
         dto.setUserId(t.getUser() != null ? t.getUser().getId() : null);
+        dto.setEmail(t.getUser() != null ? t.getUser().getEmail() : null);
         dto.setEmployeeId("EMP_T" + t.getId());
         dto.setName(t.getUser() != null ? t.getUser().getName() : "Unknown");
         dto.setSkills(allocationScorer.parseSkills(t.getSkillSet()));
@@ -125,7 +146,7 @@ public class AdminService {
         User user = new User();
         user.setName(req.getName());
         user.setEmail(req.getEmail());
-        user.setPassword("password123");
+        user.setPassword(passwordEncoder.encode("password123"));
         user.setRole(Role.TRAINER);
         User savedUser = userRepository.save(user);
 
@@ -195,6 +216,7 @@ public class AdminService {
         User user = trainer.getUser();
         trainerRepository.delete(trainer);
         if (user != null) {
+            notificationRepository.deleteByReceiverUserId(user.getId());
             userRepository.delete(user);
         }
     }
@@ -204,20 +226,25 @@ public class AdminService {
         Cohort cohort = cohortRepository.findById(cohortId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cohort not found with ID: " + cohortId));
 
-        Trainer newTrainer = trainerRepository.findById(newTrainerId)
+        // Lock new trainer for update to prevent race conditions
+        Trainer newTrainer = trainerRepository.findByIdForUpdate(newTrainerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Trainer not found with ID: " + newTrainerId));
 
-        if (newTrainer.getCurrentWorkload() >= newTrainer.getMaxWorkload()) {
-            throw new InvalidTrainerException("Trainer has reached maximum workload (" 
-                    + newTrainer.getCurrentWorkload() + "/" + newTrainer.getMaxWorkload() + ")");
+        // Check eligibility: workload, availability, skills
+        TrainerScore score = allocationScorer.evaluate(newTrainer, cohort);
+        if (!score.isEligible()) {
+            throw new InvalidTrainerException("Trainer not eligible: " + score.getIneligibilityReason());
         }
 
         Trainer oldTrainer = cohort.getAssignedTrainer();
 
-        // Decrement workload of previous trainer
+        // Decrement workload of previous trainer (with lock)
         if (oldTrainer != null) {
-            oldTrainer.setCurrentWorkload(Math.max(0, oldTrainer.getCurrentWorkload() - 1));
-            trainerRepository.save(oldTrainer);
+            Trainer lockedOldTrainer = trainerRepository.findByIdForUpdate(oldTrainer.getId()).orElse(null);
+            if (lockedOldTrainer != null) {
+                lockedOldTrainer.setCurrentWorkload(Math.max(0, lockedOldTrainer.getCurrentWorkload() - 1));
+                trainerRepository.save(lockedOldTrainer);
+            }
         }
 
         // Increment workload of new trainer

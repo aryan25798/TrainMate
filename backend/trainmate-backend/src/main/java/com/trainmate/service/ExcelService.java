@@ -53,7 +53,7 @@ public class ExcelService {
         }
 
         String filename = file.getOriginalFilename();
-        if (filename == null || (!filename.endsWith(".xlsx") && !filename.endsWith(".xls"))) {
+        if (filename == null || (!filename.toLowerCase().endsWith(".xlsx") && !filename.toLowerCase().endsWith(".xls"))) {
             throw new InvalidFileException("Unsupported file format. Please upload an Excel file (.xlsx).");
         }
 
