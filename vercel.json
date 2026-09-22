@@ -1,0 +1,11 @@
+{
+  "buildCommand": "cd frontend/trainmate-ui && npm run build",
+  "outputDirectory": "frontend/trainmate-ui/dist/trainmate-ui",
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
