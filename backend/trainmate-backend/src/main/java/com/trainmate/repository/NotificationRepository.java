@@ -10,4 +10,6 @@ import java.util.List;
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
     List<Notification> findByReceiverUserIdOrderByCreatedDateDesc(Long receiverUserId);
     long countByReceiverUserId(Long receiverUserId);
+    List<Notification> findByCohort(com.trainmate.entity.Cohort cohort);
+    void deleteByCohort(com.trainmate.entity.Cohort cohort);
 }

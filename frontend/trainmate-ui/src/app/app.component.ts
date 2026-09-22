@@ -3,13 +3,17 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { SidebarComponent } from './shared/sidebar.component';
+import { ToastContainerComponent } from './shared/toast-container.component';
 import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterModule, SidebarComponent],
+  imports: [CommonModule, RouterModule, SidebarComponent, ToastContainerComponent],
   template: `
+    <!-- Global Toast Notifications -->
+    <app-toast-container></app-toast-container>
+
     <!-- If on Login page, show full-screen view -->
     <div *ngIf="isAuthPage">
       <router-outlet></router-outlet>

@@ -2,21 +2,32 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CoachService } from '../../services/coach.service';
+import { CohortService } from '../../services/cohort.service';
 import { AuthService } from '../../services/auth.service';
+import { ToastService } from '../../services/toast.service';
 import { Cohort } from '../../models/models';
 import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.component';
 import { CreateCohortModalComponent } from '../../shared/create-cohort-modal.component';
+import { EditCohortModalComponent } from '../../shared/edit-cohort-modal.component';
+import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
 
 @Component({
   selector: 'app-coach-cohorts',
   standalone: true,
-  imports: [CommonModule, FormsModule, CohortDetailsModalComponent, CreateCohortModalComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    CohortDetailsModalComponent,
+    CreateCohortModalComponent,
+    EditCohortModalComponent,
+    ConfirmModalComponent
+  ],
   template: `
     <div>
       <div class="page-header">
         <div>
           <h1 class="page-title">My Managed Cohorts</h1>
-          <p class="page-subtitle">View and monitor cohorts assigned to your coaching portfolio.</p>
+          <p class="page-subtitle">View, edit, reallocate, and monitor cohorts assigned to your coaching portfolio.</p>
         </div>
         <div class="d-flex gap-2">
           <button type="button" class="btn btn-primary-custom" (click)="showCreateModal = true">
@@ -26,7 +37,7 @@ import { CreateCohortModalComponent } from '../../shared/create-cohort-modal.com
         </div>
       </div>
 
-      <!-- Filters & Search Bar (FRD Section 42 & 69) -->
+      <!-- Filters & Search Bar -->
       <div class="content-card p-3 mb-3">
         <div class="row g-3 align-items-center">
           <div class="col-md-5">
@@ -48,6 +59,7 @@ import { CreateCohortModalComponent } from '../../shared/create-cohort-modal.com
               <option value="PENDING">Pending</option>
               <option value="ACTIVE">Active</option>
               <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
             </select>
           </div>
           <div class="col-md-4 text-md-end text-muted small">
@@ -101,12 +113,42 @@ import { CreateCohortModalComponent } from '../../shared/create-cohort-modal.com
                   </span>
                 </td>
                 <td>
-                  <span class="badge-status" [ngClass]="getStatusBadgeClass(c.status)">{{ c.status }}</span>
+                  <div class="dropdown d-inline-block">
+                    <select
+                      class="form-select form-select-sm fw-semibold"
+                      style="width: 125px; font-size: 11.5px; border-radius: 8px;"
+                      [ngModel]="c.status"
+                      (ngModelChange)="onStatusChange(c, $event)"
+                    >
+                      <option value="PENDING">PENDING</option>
+                      <option value="ASSIGNED">ASSIGNED</option>
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="COMPLETED">COMPLETED</option>
+                      <option value="CANCELLED">CANCELLED</option>
+                    </select>
+                  </div>
                 </td>
                 <td class="text-end">
-                  <button class="btn btn-sm btn-outline-primary" (click)="selectedCohort = c">
-                    <i class="bi bi-eye me-1"></i> Details
-                  </button>
+                  <div class="d-flex justify-content-end gap-1">
+                    <button class="btn btn-sm btn-outline-primary" title="View 100-Point Breakdown" (click)="selectedCohort = c">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" title="Edit Cohort" (click)="editingCohort = c">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-outline-warning"
+                      title="Re-run 100-Point Allocation Engine"
+                      (click)="onReallocate(c)"
+                      [disabled]="reallocatingId === c.id"
+                    >
+                      <span *ngIf="reallocatingId === c.id" class="spinner-border spinner-border-sm"></span>
+                      <i *ngIf="reallocatingId !== c.id" class="bi bi-arrow-repeat"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" title="Delete Cohort" (click)="cohortToDelete = c">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
                 </td>
               </tr>
               <tr *ngIf="filteredCohorts.length === 0">
@@ -133,6 +175,25 @@ import { CreateCohortModalComponent } from '../../shared/create-cohort-modal.com
       (close)="showCreateModal = false"
       (cohortCreated)="onCohortCreated($event)">
     </app-create-cohort-modal>
+
+    <!-- Edit Cohort Modal -->
+    <app-edit-cohort-modal
+      *ngIf="editingCohort"
+      [cohort]="editingCohort"
+      (closed)="editingCohort = null"
+      (updated)="onCohortUpdated($event)">
+    </app-edit-cohort-modal>
+
+    <!-- Confirm Delete Modal -->
+    <app-confirm-modal
+      *ngIf="cohortToDelete"
+      title="Delete Cohort"
+      [message]="'Are you sure you want to delete cohort ' + cohortToDelete.cohortCode + '? If a trainer was assigned, their workload capacity will be automatically released back to the pool.'"
+      confirmText="Yes, Delete Cohort"
+      [isDanger]="true"
+      (cancel)="cohortToDelete = null"
+      (confirm)="confirmDeleteCohort()">
+    </app-confirm-modal>
   `
 })
 export class CoachCohortsComponent implements OnInit {
@@ -140,11 +201,16 @@ export class CoachCohortsComponent implements OnInit {
   searchQuery: string = '';
   statusFilter: string = '';
   selectedCohort: Cohort | null = null;
+  editingCohort: Cohort | null = null;
+  cohortToDelete: Cohort | null = null;
   showCreateModal: boolean = false;
+  reallocatingId: number | null = null;
 
   constructor(
     private coachService: CoachService,
-    private authService: AuthService
+    private cohortService: CohortService,
+    private authService: AuthService,
+    private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -165,6 +231,65 @@ export class CoachCohortsComponent implements OnInit {
   onCohortCreated(newCohort: Cohort): void {
     this.loadCohorts();
     this.selectedCohort = newCohort;
+    this.toastService.success(`Cohort ${newCohort.cohortCode} created & auto-allocated!`);
+  }
+
+  onCohortUpdated(updated: Cohort): void {
+    this.editingCohort = null;
+    this.loadCohorts();
+  }
+
+  onStatusChange(c: Cohort, newStatus: string): void {
+    if (c.status === newStatus) return;
+    this.cohortService.updateCohortStatus(c.id, newStatus).subscribe({
+      next: res => {
+        if (res.success) {
+          c.status = newStatus as any;
+          this.toastService.info(`Cohort ${c.cohortCode} status changed to ${newStatus}`);
+          this.loadCohorts();
+        }
+      },
+      error: () => {
+        this.toastService.error(`Failed to update status.`);
+      }
+    });
+  }
+
+  onReallocate(c: Cohort): void {
+    this.reallocatingId = c.id;
+    this.cohortService.reallocateTrainer(c.id).subscribe({
+      next: res => {
+        this.reallocatingId = null;
+        if (res.success) {
+          this.toastService.success(`Re-allocated ${c.cohortCode}: Assigned to ${res.data.assignedTrainerName || 'Unassigned'}`);
+          this.loadCohorts();
+          this.selectedCohort = res.data;
+        }
+      },
+      error: () => {
+        this.reallocatingId = null;
+        this.toastService.error(`Failed to reallocate trainer.`);
+      }
+    });
+  }
+
+  confirmDeleteCohort(): void {
+    if (!this.cohortToDelete) return;
+    const code = this.cohortToDelete.cohortCode;
+    const id = this.cohortToDelete.id;
+    this.cohortToDelete = null;
+
+    this.cohortService.deleteCohort(id).subscribe({
+      next: res => {
+        if (res.success) {
+          this.toastService.success(`Cohort ${code} deleted and trainer workload capacity released.`);
+          this.loadCohorts();
+        }
+      },
+      error: () => {
+        this.toastService.error(`Failed to delete cohort.`);
+      }
+    });
   }
 
   get filteredCohorts(): Cohort[] {
@@ -178,17 +303,5 @@ export class CoachCohortsComponent implements OnInit {
 
       return matchesSearch && matchesStatus;
     });
-  }
-
-  getStatusBadgeClass(status: string): string {
-    switch (status) {
-      case 'ASSIGNED': return 'badge-assigned';
-      case 'UNASSIGNED': return 'badge-unassigned';
-      case 'PENDING': return 'badge-pending';
-      case 'ACTIVE': return 'badge-active';
-      case 'COMPLETED': return 'badge-completed';
-      case 'PROCESSING': return 'badge-processing';
-      default: return 'badge-secondary';
-    }
   }
 }

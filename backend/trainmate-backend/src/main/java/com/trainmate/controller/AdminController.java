@@ -39,6 +39,35 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("All trainers retrieved successfully", trainers));
     }
 
+    @PostMapping("/trainers")
+    public ResponseEntity<ApiResponse<TrainerResponse>> createTrainer(
+            @Valid @RequestBody CreateTrainerRequest request) {
+        TrainerResponse created = adminService.createTrainer(request);
+        return ResponseEntity.ok(ApiResponse.success("Trainer created successfully", created));
+    }
+
+    @PutMapping("/trainers/{trainerId}")
+    public ResponseEntity<ApiResponse<TrainerResponse>> updateTrainer(
+            @PathVariable Long trainerId,
+            @Valid @RequestBody CreateTrainerRequest request) {
+        TrainerResponse updated = adminService.updateTrainer(trainerId, request);
+        return ResponseEntity.ok(ApiResponse.success("Trainer updated successfully", updated));
+    }
+
+    @PatchMapping("/trainers/{trainerId}/status")
+    public ResponseEntity<ApiResponse<TrainerResponse>> toggleTrainerAvailability(
+            @PathVariable Long trainerId,
+            @RequestParam boolean available) {
+        TrainerResponse updated = adminService.toggleTrainerAvailability(trainerId, available);
+        return ResponseEntity.ok(ApiResponse.success("Trainer availability updated", updated));
+    }
+
+    @DeleteMapping("/trainers/{trainerId}")
+    public ResponseEntity<ApiResponse<Void>> deleteTrainer(@PathVariable Long trainerId) {
+        adminService.deleteTrainer(trainerId);
+        return ResponseEntity.ok(ApiResponse.success("Trainer deleted successfully and unassigned from cohorts", null));
+    }
+
     @PutMapping("/cohorts/{cohortId}/trainer")
     public ResponseEntity<ApiResponse<CohortResponse>> reassignTrainer(
             @PathVariable Long cohortId,

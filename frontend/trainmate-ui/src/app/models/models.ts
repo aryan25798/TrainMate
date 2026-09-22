@@ -86,6 +86,16 @@ export interface Trainer {
   skills: string[];
 }
 
+export interface CreateTrainerRequest {
+  name: string;
+  email: string;
+  skillSet: string;
+  experienceYears: number;
+  availableFrom: string;
+  availableTill: string;
+  maxWorkload: number;
+}
+
 export interface CoachDashboard {
   totalCohorts: number;
   assigned: number;
@@ -122,6 +132,7 @@ export interface CohortUploadResponse {
   successfulRows: number;
   failedRows: number;
   errors: ExcelValidationError[];
+  allocatedCohorts?: Cohort[];
 }
 
 export interface NotificationItem {

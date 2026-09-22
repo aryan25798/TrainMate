@@ -2,18 +2,27 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../services/admin.service';
+import { ToastService } from '../../services/toast.service';
 import { Trainer } from '../../models/models';
+import { TrainerFormModalComponent } from '../../shared/trainer-form-modal.component';
+import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
 
 @Component({
   selector: 'app-admin-trainers',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TrainerFormModalComponent, ConfirmModalComponent],
   template: `
     <div>
       <div class="page-header">
         <div>
           <h1 class="page-title">Trainers Management</h1>
           <p class="page-subtitle">Inspect trainer profiles, skill proficiencies, availability, and active workload capacity.</p>
+        </div>
+        <div>
+          <button type="button" class="btn btn-primary-custom" (click)="openAddTrainer()">
+            <i class="bi bi-person-plus-fill"></i>
+            Register New Trainer
+          </button>
         </div>
       </div>
 
@@ -36,7 +45,7 @@ import { Trainer } from '../../models/models';
               <option value="">All Statuses</option>
               <option value="AVAILABLE">Available</option>
               <option value="UNAVAILABLE">Unavailable</option>
-              <option value="INACTIVE">Inactive</option>
+              <option value="AT_CAPACITY">At Capacity</option>
             </select>
           </div>
           <div class="col-md-3 text-md-end text-muted small">
@@ -45,7 +54,7 @@ import { Trainer } from '../../models/models';
         </div>
       </div>
 
-      <!-- Trainers Table (FRD Section 50) -->
+      <!-- Trainers Table -->
       <div class="content-card">
         <div class="table-responsive">
           <table class="table table-hover align-middle">
@@ -53,12 +62,12 @@ import { Trainer } from '../../models/models';
               <tr>
                 <th>Trainer</th>
                 <th>Skills</th>
-                <th>Service Line / Vert</th>
                 <th>Experience</th>
                 <th>Availability Window</th>
                 <th>Workload Capacity</th>
                 <th>Prev Cohorts</th>
                 <th>Status</th>
+                <th class="text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -74,17 +83,16 @@ import { Trainer } from '../../models/models';
                     </div>
                   </div>
                 </td>
-                <td style="max-width: 250px;">
+                <td style="max-width: 240px;">
                   <span class="badge-tag" *ngFor="let s of t.skills">{{ s }}</span>
                 </td>
-                <td>{{ t.serviceLine }} <small class="text-muted d-block">{{ t.vertical }}</small></td>
                 <td><span class="fw-semibold">{{ t.experienceYears }}</span> yrs</td>
                 <td>
                   <small class="d-block">{{ t.availableFrom }}</small>
                   <small class="text-muted">to {{ t.availableTill }}</small>
                 </td>
                 <td>
-                  <div class="d-flex align-items-center gap-2">
+                  <div class="d-flex align-items-center gap-2" style="min-width: 120px;">
                     <div class="progress flex-grow-1" style="height: 8px;">
                       <div
                         class="progress-bar"
@@ -103,6 +111,24 @@ import { Trainer } from '../../models/models';
                     {{ t.status }}
                   </span>
                 </td>
+                <td class="text-end">
+                  <div class="d-flex justify-content-end gap-1">
+                    <button class="btn btn-sm btn-outline-secondary" (click)="openEditTrainer(t)" title="Edit Trainer Details">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm"
+                      [ngClass]="t.status === 'AVAILABLE' ? 'btn-outline-warning' : 'btn-outline-success'"
+                      (click)="toggleAvailability(t)"
+                      [title]="t.status === 'AVAILABLE' ? 'Deactivate (Set Unavailable)' : 'Activate (Set Available)'"
+                    >
+                      <i class="bi" [ngClass]="t.status === 'AVAILABLE' ? 'bi-pause-circle' : 'bi-play-circle'"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" (click)="trainerToDelete = t" title="Delete Trainer">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </td>
               </tr>
               <tr *ngIf="filteredTrainers.length === 0">
                 <td colspan="8" class="text-center py-4 text-muted">
@@ -114,6 +140,26 @@ import { Trainer } from '../../models/models';
         </div>
       </div>
     </div>
+
+    <!-- Add / Edit Trainer Modal -->
+    <app-trainer-form-modal
+      *ngIf="showTrainerModal"
+      [trainer]="selectedTrainerForEdit"
+      [isEdit]="isEditMode"
+      (closed)="showTrainerModal = false"
+      (saved)="onTrainerSaved($event)">
+    </app-trainer-form-modal>
+
+    <!-- Delete Trainer Confirm Modal -->
+    <app-confirm-modal
+      *ngIf="trainerToDelete"
+      title="Delete Trainer"
+      [message]="'Are you sure you want to remove trainer ' + trainerToDelete.name + '? Any cohorts currently assigned to this trainer will be set to UNASSIGNED.'"
+      confirmText="Yes, Delete Trainer"
+      [isDanger]="true"
+      (cancel)="trainerToDelete = null"
+      (confirm)="confirmDeleteTrainer()">
+    </app-confirm-modal>
   `
 })
 export class AdminTrainersComponent implements OnInit {
@@ -121,14 +167,77 @@ export class AdminTrainersComponent implements OnInit {
   searchQuery: string = '';
   statusFilter: string = '';
 
-  constructor(private adminService: AdminService) {}
+  showTrainerModal: boolean = false;
+  selectedTrainerForEdit?: Trainer;
+  isEditMode: boolean = false;
+  trainerToDelete: Trainer | null = null;
+
+  constructor(
+    private adminService: AdminService,
+    private toastService: ToastService
+  ) {}
 
   ngOnInit(): void {
+    this.loadTrainers();
+  }
+
+  loadTrainers(): void {
     this.adminService.getAllTrainers().subscribe({
       next: res => {
         if (res.success) {
           this.trainers = res.data;
         }
+      }
+    });
+  }
+
+  openAddTrainer(): void {
+    this.isEditMode = false;
+    this.selectedTrainerForEdit = undefined;
+    this.showTrainerModal = true;
+  }
+
+  openEditTrainer(t: Trainer): void {
+    this.isEditMode = true;
+    this.selectedTrainerForEdit = t;
+    this.showTrainerModal = true;
+  }
+
+  onTrainerSaved(t: Trainer): void {
+    this.showTrainerModal = false;
+    this.loadTrainers();
+  }
+
+  toggleAvailability(t: Trainer): void {
+    const newAvail = t.status !== 'AVAILABLE';
+    this.adminService.toggleTrainerAvailability(t.id, newAvail).subscribe({
+      next: res => {
+        if (res.success) {
+          this.toastService.info(`Trainer ${t.name} is now ${newAvail ? 'Available' : 'Unavailable'}.`);
+          this.loadTrainers();
+        }
+      },
+      error: () => {
+        this.toastService.error(`Failed to update trainer availability.`);
+      }
+    });
+  }
+
+  confirmDeleteTrainer(): void {
+    if (!this.trainerToDelete) return;
+    const name = this.trainerToDelete.name;
+    const id = this.trainerToDelete.id;
+    this.trainerToDelete = null;
+
+    this.adminService.deleteTrainer(id).subscribe({
+      next: res => {
+        if (res.success) {
+          this.toastService.success(`Trainer ${name} deleted successfully.`);
+          this.loadTrainers();
+        }
+      },
+      error: () => {
+        this.toastService.error(`Failed to delete trainer.`);
       }
     });
   }

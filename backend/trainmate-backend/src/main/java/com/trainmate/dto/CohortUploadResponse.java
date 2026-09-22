@@ -8,9 +8,11 @@ public class CohortUploadResponse {
     private int successfulRows;
     private int failedRows;
     private List<ExcelValidationError> errors;
+    private List<CohortResponse> allocatedCohorts;
 
     public CohortUploadResponse() {
         this.errors = new ArrayList<>();
+        this.allocatedCohorts = new ArrayList<>();
     }
 
     public CohortUploadResponse(int totalRows, int successfulRows, int failedRows, List<ExcelValidationError> errors) {
@@ -18,6 +20,15 @@ public class CohortUploadResponse {
         this.successfulRows = successfulRows;
         this.failedRows = failedRows;
         this.errors = errors != null ? errors : new ArrayList<>();
+        this.allocatedCohorts = new ArrayList<>();
+    }
+
+    public CohortUploadResponse(int totalRows, int successfulRows, int failedRows, List<ExcelValidationError> errors, List<CohortResponse> allocatedCohorts) {
+        this.totalRows = totalRows;
+        this.successfulRows = successfulRows;
+        this.failedRows = failedRows;
+        this.errors = errors != null ? errors : new ArrayList<>();
+        this.allocatedCohorts = allocatedCohorts != null ? allocatedCohorts : new ArrayList<>();
     }
 
     public int getTotalRows() {
@@ -50,5 +61,13 @@ public class CohortUploadResponse {
 
     public void setErrors(List<ExcelValidationError> errors) {
         this.errors = errors;
+    }
+
+    public List<CohortResponse> getAllocatedCohorts() {
+        return allocatedCohorts;
+    }
+
+    public void setAllocatedCohorts(List<CohortResponse> allocatedCohorts) {
+        this.allocatedCohorts = allocatedCohorts;
     }
 }

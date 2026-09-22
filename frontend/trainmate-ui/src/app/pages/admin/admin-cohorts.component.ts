@@ -2,20 +2,31 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../services/admin.service';
+import { CohortService } from '../../services/cohort.service';
+import { ToastService } from '../../services/toast.service';
 import { Cohort } from '../../models/models';
 import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.component';
 import { ReassignModalComponent } from '../../shared/reassign-modal.component';
+import { EditCohortModalComponent } from '../../shared/edit-cohort-modal.component';
+import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
 
 @Component({
   selector: 'app-admin-cohorts',
   standalone: true,
-  imports: [CommonModule, FormsModule, CohortDetailsModalComponent, ReassignModalComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    CohortDetailsModalComponent,
+    ReassignModalComponent,
+    EditCohortModalComponent,
+    ConfirmModalComponent
+  ],
   template: `
     <div>
       <div class="page-header">
         <div>
           <h1 class="page-title">All System Cohorts</h1>
-          <p class="page-subtitle">Master list of cohorts, allocation scores, and trainer assignments.</p>
+          <p class="page-subtitle">Master list of cohorts, allocation scores, and trainer assignments across all academy streams.</p>
         </div>
         <div>
           <button type="button" class="btn btn-secondary-custom" (click)="exportReport()">
@@ -25,7 +36,7 @@ import { ReassignModalComponent } from '../../shared/reassign-modal.component';
         </div>
       </div>
 
-      <!-- Filters & Multi-Search Bar (FRD Section 69) -->
+      <!-- Filters & Multi-Search Bar -->
       <div class="content-card p-3 mb-3">
         <div class="row g-3 align-items-center">
           <div class="col-md-4">
@@ -47,6 +58,7 @@ import { ReassignModalComponent } from '../../shared/reassign-modal.component';
               <option value="PENDING">Pending</option>
               <option value="ACTIVE">Active</option>
               <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
             </select>
           </div>
           <div class="col-md-2">
@@ -70,10 +82,10 @@ import { ReassignModalComponent } from '../../shared/reassign-modal.component';
                 <th>Cohort Code</th>
                 <th>Service Line</th>
                 <th>Required Skill</th>
+                <th>Trainees</th>
                 <th>Coach</th>
                 <th>Assigned Trainer</th>
-                <th>Score</th>
-                <th>Start / End</th>
+                <th>Duration</th>
                 <th>Status</th>
                 <th class="text-end">Actions</th>
               </tr>
@@ -83,38 +95,68 @@ import { ReassignModalComponent } from '../../shared/reassign-modal.component';
                 <td class="fw-bold text-dark">{{ c.cohortCode }}</td>
                 <td>{{ c.serviceLine }}</td>
                 <td><span class="badge-tag">{{ c.requiredSkill }}</span></td>
-                <td>{{ c.coachName || 'N/A' }}</td>
+                <td>{{ c.numberOfTrainees }}</td>
+                <td>
+                  <span class="fw-semibold text-dark">{{ c.coachName || 'Unknown' }}</span>
+                </td>
                 <td>
                   <div *ngIf="c.assignedTrainerName" class="d-flex align-items-center gap-2">
-                    <div class="user-avatar" style="width: 28px; height: 28px; font-size: 0.75rem; border-radius: 8px;">
+                    <div class="user-avatar" style="width: 30px; height: 30px; font-size: 0.8rem; border-radius: 8px;">
                       {{ c.assignedTrainerName.charAt(0) }}
                     </div>
-                    <span class="fw-semibold text-primary">{{ c.assignedTrainerName }}</span>
+                    <div>
+                      <div class="fw-bold text-primary" style="font-size: 0.9rem;">{{ c.assignedTrainerName }}</div>
+                      <span *ngIf="c.allocationScore" class="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0" style="font-size: 0.7rem;">
+                        {{ c.allocationScore }} pts
+                      </span>
+                    </div>
                   </div>
                   <span *ngIf="!c.assignedTrainerName" class="badge-status badge-unassigned">
                     Unassigned
                   </span>
                 </td>
                 <td>
-                  <span *ngIf="c.allocationScore !== undefined && c.allocationScore !== null" class="badge bg-success-subtle text-success fw-bold">
-                    {{ c.allocationScore }} / 100
-                  </span>
-                  <span *ngIf="c.allocationScore === undefined || c.allocationScore === null" class="text-muted">-</span>
-                </td>
-                <td>
                   <small class="d-block">{{ c.startDate }}</small>
                   <small class="text-muted">{{ c.endDate }}</small>
                 </td>
                 <td>
-                  <span class="badge-status" [ngClass]="getStatusBadgeClass(c.status)">{{ c.status }}</span>
+                  <div class="dropdown d-inline-block">
+                    <select
+                      class="form-select form-select-sm fw-semibold"
+                      style="width: 125px; font-size: 11.5px; border-radius: 8px;"
+                      [ngModel]="c.status"
+                      (ngModelChange)="onStatusChange(c, $event)"
+                    >
+                      <option value="PENDING">PENDING</option>
+                      <option value="ASSIGNED">ASSIGNED</option>
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="COMPLETED">COMPLETED</option>
+                      <option value="CANCELLED">CANCELLED</option>
+                    </select>
+                  </div>
                 </td>
                 <td class="text-end">
-                  <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-primary" (click)="selectedCohortForDetails = c" title="View Details & Score Breakdown">
-                      <i class="bi bi-eye"></i> View
+                  <div class="d-flex justify-content-end gap-1">
+                    <button class="btn btn-sm btn-outline-primary" (click)="selectedCohortForDetails = c" title="View Details & Score Breakdown">
+                      <i class="bi bi-eye"></i>
                     </button>
-                    <button class="btn btn-outline-secondary" (click)="selectedCohortForReassign = c" title="Change Trainer Override">
-                      <i class="bi bi-arrow-left-right text-primary"></i> Change Trainer
+                    <button class="btn btn-sm btn-outline-info" (click)="selectedCohortForReassign = c" title="Manual Trainer Reassignment">
+                      <i class="bi bi-arrow-left-right"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" (click)="editingCohort = c" title="Edit Cohort">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-outline-warning"
+                      title="Re-run 100-Point Allocation Engine"
+                      (click)="onReallocate(c)"
+                      [disabled]="reallocatingId === c.id"
+                    >
+                      <span *ngIf="reallocatingId === c.id" class="spinner-border spinner-border-sm"></span>
+                      <i *ngIf="reallocatingId !== c.id" class="bi bi-arrow-repeat"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" (click)="cohortToDelete = c" title="Delete Cohort">
+                      <i class="bi bi-trash"></i>
                     </button>
                   </div>
                 </td>
@@ -137,13 +179,32 @@ import { ReassignModalComponent } from '../../shared/reassign-modal.component';
       (close)="selectedCohortForDetails = null">
     </app-cohort-details-modal>
 
-    <!-- Admin Reassignment Modal (FRD Section 51-53) -->
+    <!-- Admin Reassignment Modal -->
     <app-reassign-modal
       *ngIf="selectedCohortForReassign"
       [cohort]="selectedCohortForReassign"
       (close)="selectedCohortForReassign = null"
       (reassigned)="onCohortReassigned($event)">
     </app-reassign-modal>
+
+    <!-- Edit Cohort Modal -->
+    <app-edit-cohort-modal
+      *ngIf="editingCohort"
+      [cohort]="editingCohort"
+      (closed)="editingCohort = null"
+      (updated)="onCohortUpdated($event)">
+    </app-edit-cohort-modal>
+
+    <!-- Confirm Delete Modal -->
+    <app-confirm-modal
+      *ngIf="cohortToDelete"
+      title="Delete Cohort"
+      [message]="'Are you sure you want to delete cohort ' + cohortToDelete.cohortCode + '? If a trainer was assigned, their capacity will be released automatically.'"
+      confirmText="Yes, Delete Cohort"
+      [isDanger]="true"
+      (cancel)="cohortToDelete = null"
+      (confirm)="confirmDeleteCohort()">
+    </app-confirm-modal>
   `
 })
 export class AdminCohortsComponent implements OnInit {
@@ -155,8 +216,15 @@ export class AdminCohortsComponent implements OnInit {
 
   selectedCohortForDetails: Cohort | null = null;
   selectedCohortForReassign: Cohort | null = null;
+  editingCohort: Cohort | null = null;
+  cohortToDelete: Cohort | null = null;
+  reallocatingId: number | null = null;
 
-  constructor(private adminService: AdminService) {}
+  constructor(
+    private adminService: AdminService,
+    private cohortService: CohortService,
+    private toastService: ToastService
+  ) {}
 
   ngOnInit(): void {
     this.loadCohorts();
@@ -167,31 +235,81 @@ export class AdminCohortsComponent implements OnInit {
       next: res => {
         if (res.success) {
           this.cohorts = res.data;
-          const slSet = new Set<string>();
-          this.cohorts.forEach(c => { if (c.serviceLine) slSet.add(c.serviceLine); });
-          this.serviceLines = Array.from(slSet);
+          this.extractServiceLines();
         }
       }
     });
   }
 
-  onCohortReassigned(updated: Cohort): void {
+  extractServiceLines(): void {
+    const sls = new Set<string>();
+    this.cohorts.forEach(c => {
+      if (c.serviceLine) sls.add(c.serviceLine);
+    });
+    this.serviceLines = Array.from(sls).sort();
+  }
+
+  onCohortReassigned(updatedCohort: Cohort): void {
+    this.selectedCohortForReassign = null;
+    this.toastService.success(`Trainer reassigned for ${updatedCohort.cohortCode}.`);
     this.loadCohorts();
   }
 
-  get filteredCohorts(): Cohort[] {
-    return this.cohorts.filter(c => {
-      const q = this.searchQuery.toLowerCase();
-      const matchesSearch = !this.searchQuery ||
-        c.cohortCode.toLowerCase().includes(q) ||
-        c.requiredSkill.toLowerCase().includes(q) ||
-        (c.coachName && c.coachName.toLowerCase().includes(q)) ||
-        (c.assignedTrainerName && c.assignedTrainerName.toLowerCase().includes(q));
+  onCohortUpdated(updated: Cohort): void {
+    this.editingCohort = null;
+    this.loadCohorts();
+  }
 
-      const matchesStatus = !this.statusFilter || c.status === this.statusFilter;
-      const matchesSL = !this.serviceLineFilter || c.serviceLine === this.serviceLineFilter;
+  onStatusChange(c: Cohort, newStatus: string): void {
+    if (c.status === newStatus) return;
+    this.cohortService.updateCohortStatus(c.id, newStatus).subscribe({
+      next: res => {
+        if (res.success) {
+          c.status = newStatus as any;
+          this.toastService.info(`Cohort ${c.cohortCode} status changed to ${newStatus}`);
+          this.loadCohorts();
+        }
+      },
+      error: () => {
+        this.toastService.error(`Failed to update status.`);
+      }
+    });
+  }
 
-      return matchesSearch && matchesStatus && matchesSL;
+  onReallocate(c: Cohort): void {
+    this.reallocatingId = c.id;
+    this.cohortService.reallocateTrainer(c.id).subscribe({
+      next: res => {
+        this.reallocatingId = null;
+        if (res.success) {
+          this.toastService.success(`Re-allocated ${c.cohortCode}: Assigned to ${res.data.assignedTrainerName || 'Unassigned'}`);
+          this.loadCohorts();
+          this.selectedCohortForDetails = res.data;
+        }
+      },
+      error: () => {
+        this.reallocatingId = null;
+        this.toastService.error(`Failed to reallocate trainer.`);
+      }
+    });
+  }
+
+  confirmDeleteCohort(): void {
+    if (!this.cohortToDelete) return;
+    const code = this.cohortToDelete.cohortCode;
+    const id = this.cohortToDelete.id;
+    this.cohortToDelete = null;
+
+    this.cohortService.deleteCohort(id).subscribe({
+      next: res => {
+        if (res.success) {
+          this.toastService.success(`Cohort ${code} deleted successfully.`);
+          this.loadCohorts();
+        }
+      },
+      error: () => {
+        this.toastService.error(`Failed to delete cohort.`);
+      }
     });
   }
 
@@ -201,10 +319,26 @@ export class AdminCohortsComponent implements OnInit {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'TrainMate_Allocation_Report.xlsx';
+        a.download = 'cohort_allocations.xlsx';
         a.click();
         window.URL.revokeObjectURL(url);
+        this.toastService.success(`Allocation report downloaded.`);
       }
+    });
+  }
+
+  get filteredCohorts(): Cohort[] {
+    return this.cohorts.filter(c => {
+      const matchesSearch = !this.searchQuery ||
+        c.cohortCode.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+        c.requiredSkill.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+        (c.coachName && c.coachName.toLowerCase().includes(this.searchQuery.toLowerCase())) ||
+        (c.assignedTrainerName && c.assignedTrainerName.toLowerCase().includes(this.searchQuery.toLowerCase()));
+
+      const matchesStatus = !this.statusFilter || c.status === this.statusFilter;
+      const matchesSL = !this.serviceLineFilter || c.serviceLine === this.serviceLineFilter;
+
+      return matchesSearch && matchesStatus && matchesSL;
     });
   }
 
@@ -215,7 +349,7 @@ export class AdminCohortsComponent implements OnInit {
       case 'PENDING': return 'badge-pending';
       case 'ACTIVE': return 'badge-active';
       case 'COMPLETED': return 'badge-completed';
-      case 'PROCESSING': return 'badge-processing';
+      case 'CANCELLED': return 'badge-secondary';
       default: return 'badge-secondary';
     }
   }

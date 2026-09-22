@@ -395,9 +395,66 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
                 </div>
               </div>
 
-              <div *ngIf="uploadResponse.successfulRows > 0" class="alert alert-success mt-3 py-2 small mb-0">
+              <div *ngIf="uploadResponse.successfulRows > 0" class="alert alert-success mt-3 py-2 small mb-3">
                 <i class="bi bi-check-circle-fill me-2"></i>
-                <strong>{{ uploadResponse.successfulRows }}</strong> cohort(s) saved and processed through the automatic trainer allocation engine.
+                <strong>{{ uploadResponse.successfulRows }}</strong> cohort(s) saved and evaluated through the 100-point trainer allocation engine.
+              </div>
+
+              <!-- Batch Allocation Results Table -->
+              <div *ngIf="uploadResponse.allocatedCohorts && uploadResponse.allocatedCohorts.length > 0" class="mt-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-cpu-fill text-primary"></i> Batch Allocation Results
+                  </h6>
+                  <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1">
+                    {{ uploadResponse.allocatedCohorts.length }} Evaluated
+                  </span>
+                </div>
+                <div class="table-responsive border rounded-3">
+                  <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Cohort</th>
+                        <th>Required Skill</th>
+                        <th>Allocated Trainer</th>
+                        <th>Score</th>
+                        <th>Status</th>
+                        <th>Breakdown</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let c of uploadResponse.allocatedCohorts">
+                        <td class="fw-bold text-dark">{{ c.cohortCode }}</td>
+                        <td><span class="badge-tag">{{ c.requiredSkill }}</span></td>
+                        <td>
+                          <div *ngIf="c.assignedTrainerName" class="d-flex align-items-center gap-2">
+                            <span class="trainer-avatar" style="width:26px; height:26px; font-size:11px;">{{ getInitials(c.assignedTrainerName) }}</span>
+                            <span class="fw-semibold text-dark">{{ c.assignedTrainerName }}</span>
+                          </div>
+                          <span *ngIf="!c.assignedTrainerName" class="text-warning small fst-italic">
+                            <i class="bi bi-exclamation-triangle me-1"></i> None (Unassigned)
+                          </span>
+                        </td>
+                        <td>
+                          <span *ngIf="c.allocationScore != null && c.allocationScore > 0" class="badge bg-success text-white fw-bold px-2 py-1">
+                            {{ c.allocationScore }} / 100
+                          </span>
+                          <span *ngIf="!c.allocationScore || c.allocationScore === 0" class="text-muted">-</span>
+                        </td>
+                        <td>
+                          <span class="badge-status" [ngClass]="c.status === 'ASSIGNED' ? 'badge-assigned' : 'badge-unassigned'">
+                            {{ c.status }}
+                          </span>
+                        </td>
+                        <td>
+                          <button type="button" class="btn btn-xs btn-outline-primary" (click)="viewResultDetails = c">
+                            <i class="bi bi-calculator me-1"></i> Details
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -569,5 +626,14 @@ export class CoachUploadComponent {
         }
       }
     });
+  }
+
+  getInitials(name?: string): string {
+    if (!name) return 'TR';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
   }
 }

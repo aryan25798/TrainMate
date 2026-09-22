@@ -3,14 +3,18 @@ package com.trainmate.service;
 import com.trainmate.allocation.AllocationScorer;
 import com.trainmate.dto.AdminDashboardResponse;
 import com.trainmate.dto.CohortResponse;
+import com.trainmate.dto.CreateTrainerRequest;
 import com.trainmate.dto.TrainerResponse;
 import com.trainmate.entity.Cohort;
 import com.trainmate.entity.CohortStatus;
+import com.trainmate.entity.Role;
 import com.trainmate.entity.Trainer;
+import com.trainmate.entity.User;
 import com.trainmate.exception.InvalidTrainerException;
 import com.trainmate.exception.ResourceNotFoundException;
 import com.trainmate.repository.CohortRepository;
 import com.trainmate.repository.TrainerRepository;
+import com.trainmate.repository.UserRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
@@ -18,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,6 +32,7 @@ public class AdminService {
 
     private final CohortRepository cohortRepository;
     private final TrainerRepository trainerRepository;
+    private final UserRepository userRepository;
     private final CohortService cohortService;
     private final AllocationScorer allocationScorer;
     private final NotificationService notificationService;
@@ -34,12 +40,14 @@ public class AdminService {
     public AdminService(
             CohortRepository cohortRepository,
             TrainerRepository trainerRepository,
+            UserRepository userRepository,
             CohortService cohortService,
             AllocationScorer allocationScorer,
             NotificationService notificationService
     ) {
         this.cohortRepository = cohortRepository;
         this.trainerRepository = trainerRepository;
+        this.userRepository = userRepository;
         this.cohortService = cohortService;
         this.allocationScorer = allocationScorer;
         this.notificationService = notificationService;
@@ -58,8 +66,13 @@ public class AdminService {
 
         long totalTrainers = trainerRepository.count();
         resp.setTotalTrainers(totalTrainers);
-        resp.setAvailableTrainers(totalTrainers);
-        resp.setUnavailableTrainers(0);
+
+        long availableTrainers = trainerRepository.findAll().stream()
+                .filter(t -> t.getCurrentWorkload() < t.getMaxWorkload()
+                        && (t.getAvailableTill() == null || !t.getAvailableTill().isBefore(LocalDate.now())))
+                .count();
+        resp.setAvailableTrainers(availableTrainers);
+        resp.setUnavailableTrainers(totalTrainers - availableTrainers);
 
         return resp;
     }
@@ -73,29 +86,121 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public List<TrainerResponse> getAllTrainers() {
-        return trainerRepository.findAll().stream().map(t -> {
-            TrainerResponse dto = new TrainerResponse();
-            dto.setId(t.getId());
-            dto.setUserId(t.getUser().getId());
-            dto.setEmployeeId("EMP_T" + t.getId());
-            dto.setName(t.getUser().getName());
-            dto.setSkills(allocationScorer.parseSkills(t.getSkillSet()));
-            dto.setServiceLine("Training");
-            dto.setVertical("General");
-            dto.setExperienceYears(t.getExperienceYears() != null ? t.getExperienceYears().intValue() : 0);
-            dto.setAvailableFrom(t.getAvailableFrom());
-            dto.setAvailableTill(t.getAvailableTill());
-            dto.setCurrentWorkload(t.getCurrentWorkload());
-            dto.setMaximumWorkload(t.getMaxWorkload());
-            dto.setWorkloadRatio(t.getCurrentWorkload() + "/" + t.getMaxWorkload());
-            dto.setPreviouslyHandledCohorts((int) cohortRepository.countByAssignedTrainerId(t.getId()));
+        return trainerRepository.findAll().stream().map(this::mapToTrainerResponse).collect(Collectors.toList());
+    }
+
+    public TrainerResponse mapToTrainerResponse(Trainer t) {
+        TrainerResponse dto = new TrainerResponse();
+        dto.setId(t.getId());
+        dto.setUserId(t.getUser() != null ? t.getUser().getId() : null);
+        dto.setEmployeeId("EMP_T" + t.getId());
+        dto.setName(t.getUser() != null ? t.getUser().getName() : "Unknown");
+        dto.setSkills(allocationScorer.parseSkills(t.getSkillSet()));
+        dto.setServiceLine("Training");
+        dto.setVertical("General");
+        dto.setExperienceYears(t.getExperienceYears() != null ? t.getExperienceYears().intValue() : 0);
+        dto.setAvailableFrom(t.getAvailableFrom());
+        dto.setAvailableTill(t.getAvailableTill());
+        dto.setCurrentWorkload(t.getCurrentWorkload());
+        dto.setMaximumWorkload(t.getMaxWorkload());
+        dto.setWorkloadRatio(t.getCurrentWorkload() + "/" + t.getMaxWorkload());
+        dto.setPreviouslyHandledCohorts((int) cohortRepository.countByAssignedTrainerId(t.getId()));
+
+        if (t.getAvailableTill() != null && t.getAvailableTill().isBefore(LocalDate.now())) {
+            dto.setStatus("UNAVAILABLE");
+        } else if (t.getCurrentWorkload() >= t.getMaxWorkload()) {
+            dto.setStatus("AT_CAPACITY");
+        } else {
             dto.setStatus("AVAILABLE");
-            return dto;
-        }).collect(Collectors.toList());
+        }
+        return dto;
     }
 
     @Transactional
-    public CohortResponse reassignTrainer(Long cohortId, Long newTrainerId, Long adminUserId, String reason) {
+    public TrainerResponse createTrainer(CreateTrainerRequest req) {
+        if (userRepository.findByEmail(req.getEmail()).isPresent()) {
+            throw new IllegalArgumentException("User with email " + req.getEmail() + " already exists");
+        }
+
+        User user = new User();
+        user.setName(req.getName());
+        user.setEmail(req.getEmail());
+        user.setPassword("password123");
+        user.setRole(Role.TRAINER);
+        User savedUser = userRepository.save(user);
+
+        Trainer trainer = new Trainer();
+        trainer.setUser(savedUser);
+        trainer.setSkillSet(req.getSkillSet());
+        trainer.setExperienceYears(req.getExperienceYears());
+        trainer.setAvailableFrom(req.getAvailableFrom());
+        trainer.setAvailableTill(req.getAvailableTill());
+        trainer.setMaxWorkload(req.getMaxWorkload() != null ? req.getMaxWorkload() : 5);
+        trainer.setCurrentWorkload(0);
+        Trainer savedTrainer = trainerRepository.save(trainer);
+
+        return mapToTrainerResponse(savedTrainer);
+    }
+
+    @Transactional
+    public TrainerResponse updateTrainer(Long trainerId, CreateTrainerRequest req) {
+        Trainer trainer = trainerRepository.findById(trainerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Trainer not found with ID: " + trainerId));
+
+        if (trainer.getUser() != null) {
+            trainer.getUser().setName(req.getName());
+            trainer.getUser().setEmail(req.getEmail());
+            userRepository.save(trainer.getUser());
+        }
+
+        trainer.setSkillSet(req.getSkillSet());
+        trainer.setExperienceYears(req.getExperienceYears());
+        trainer.setAvailableFrom(req.getAvailableFrom());
+        trainer.setAvailableTill(req.getAvailableTill());
+        if (req.getMaxWorkload() != null) {
+            trainer.setMaxWorkload(req.getMaxWorkload());
+        }
+        Trainer saved = trainerRepository.save(trainer);
+        return mapToTrainerResponse(saved);
+    }
+
+    @Transactional
+    public TrainerResponse toggleTrainerAvailability(Long trainerId, boolean available) {
+        Trainer trainer = trainerRepository.findById(trainerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Trainer not found with ID: " + trainerId));
+
+        if (available) {
+            trainer.setAvailableFrom(LocalDate.now());
+            trainer.setAvailableTill(LocalDate.now().plusMonths(6));
+        } else {
+            trainer.setAvailableTill(LocalDate.now().minusDays(1));
+        }
+        Trainer saved = trainerRepository.save(trainer);
+        return mapToTrainerResponse(saved);
+    }
+
+    @Transactional
+    public void deleteTrainer(Long trainerId) {
+        Trainer trainer = trainerRepository.findById(trainerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Trainer not found with ID: " + trainerId));
+
+        // Unassign from any assigned cohorts
+        List<Cohort> assigned = cohortRepository.findByAssignedTrainerIdOrderByStartDateAsc(trainerId);
+        for (Cohort c : assigned) {
+            c.setAssignedTrainer(null);
+            c.setStatus(CohortStatus.UNASSIGNED);
+            cohortRepository.save(c);
+        }
+
+        User user = trainer.getUser();
+        trainerRepository.delete(trainer);
+        if (user != null) {
+            userRepository.delete(user);
+        }
+    }
+
+    @Transactional
+    public CohortResponse overrideTrainer(Long cohortId, Long newTrainerId, String reason) {
         Cohort cohort = cohortRepository.findById(cohortId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cohort not found with ID: " + cohortId));
 
@@ -128,6 +233,11 @@ public class AdminService {
         notificationService.notifyReassigned(saved, oldTrainer, newTrainer, reason);
 
         return cohortService.mapToResponse(saved);
+    }
+
+    @Transactional
+    public CohortResponse reassignTrainer(Long cohortId, Long newTrainerId, Long adminUserId, String reason) {
+        return overrideTrainer(cohortId, newTrainerId, reason);
     }
 
     @Transactional(readOnly = true)

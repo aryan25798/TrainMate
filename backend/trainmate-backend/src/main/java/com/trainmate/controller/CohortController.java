@@ -2,8 +2,10 @@ package com.trainmate.controller;
 
 import com.trainmate.dto.ApiResponse;
 import com.trainmate.dto.CohortResponse;
+import com.trainmate.dto.CreateCohortRequest;
 import com.trainmate.service.CohortService;
 import com.trainmate.service.ExcelService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +29,34 @@ public class CohortController {
     public ResponseEntity<ApiResponse<CohortResponse>> getCohort(@PathVariable Long cohortId) {
         CohortResponse data = cohortService.getCohortById(cohortId);
         return ResponseEntity.ok(ApiResponse.success("Cohort retrieved successfully", data));
+    }
+
+    @DeleteMapping("/{cohortId}")
+    public ResponseEntity<ApiResponse<Void>> deleteCohort(@PathVariable Long cohortId) {
+        cohortService.deleteCohort(cohortId);
+        return ResponseEntity.ok(ApiResponse.success("Cohort deleted successfully and trainer workload released.", null));
+    }
+
+    @PutMapping("/{cohortId}")
+    public ResponseEntity<ApiResponse<CohortResponse>> updateCohort(
+            @PathVariable Long cohortId,
+            @Valid @RequestBody CreateCohortRequest request) {
+        CohortResponse data = cohortService.updateCohort(cohortId, request);
+        return ResponseEntity.ok(ApiResponse.success("Cohort updated successfully", data));
+    }
+
+    @PatchMapping("/{cohortId}/status")
+    public ResponseEntity<ApiResponse<CohortResponse>> updateCohortStatus(
+            @PathVariable Long cohortId,
+            @RequestParam String status) {
+        CohortResponse data = cohortService.updateCohortStatus(cohortId, status);
+        return ResponseEntity.ok(ApiResponse.success("Cohort status updated to " + status, data));
+    }
+
+    @PostMapping("/{cohortId}/reallocate")
+    public ResponseEntity<ApiResponse<CohortResponse>> reallocateTrainer(@PathVariable Long cohortId) {
+        CohortResponse data = cohortService.reallocateTrainer(cohortId);
+        return ResponseEntity.ok(ApiResponse.success("100-point allocation engine re-evaluated successfully", data));
     }
 
     @GetMapping("/sample-template")

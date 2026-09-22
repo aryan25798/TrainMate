@@ -7,7 +7,7 @@ import java.nio.file.Paths;
 
 public class TemplateGenerator {
     public static void main(String[] args) throws Exception {
-        ExcelService excelService = new ExcelService(null, null);
+        ExcelService excelService = new ExcelService(null, null, null);
         byte[] bytes = excelService.generateSampleExcelTemplate();
         Files.createDirectories(Paths.get("../../sample-data"));
         try (FileOutputStream fos = new FileOutputStream("../../sample-data/cohort-template.xlsx")) {

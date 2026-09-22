@@ -6,5 +6,6 @@ public enum CohortStatus {
     ASSIGNED,
     UNASSIGNED,
     ACTIVE,
-    COMPLETED
+    COMPLETED,
+    CANCELLED
 }

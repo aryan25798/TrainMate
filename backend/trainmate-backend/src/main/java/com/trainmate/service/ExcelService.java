@@ -27,6 +27,7 @@ public class ExcelService {
 
     private final CohortRepository cohortRepository;
     private final TrainerAllocationService trainerAllocationService;
+    private final CohortService cohortService;
 
     private static final DateTimeFormatter[] DATE_FORMATTERS = new DateTimeFormatter[]{
             DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH),
@@ -37,9 +38,10 @@ public class ExcelService {
             DateTimeFormatter.ofPattern("yyyy/MM/dd")
     };
 
-    public ExcelService(CohortRepository cohortRepository, TrainerAllocationService trainerAllocationService) {
+    public ExcelService(CohortRepository cohortRepository, TrainerAllocationService trainerAllocationService, CohortService cohortService) {
         this.cohortRepository = cohortRepository;
         this.trainerAllocationService = trainerAllocationService;
+        this.cohortService = cohortService;
     }
 
     /**
@@ -177,16 +179,18 @@ public class ExcelService {
         }
 
         int successfulRows = 0;
+        List<com.trainmate.dto.CohortResponse> allocatedCohorts = new ArrayList<>();
         // Save and allocate each valid cohort
         for (Cohort cohort : validCohorts) {
             Cohort saved = cohortRepository.save(cohort);
             trainerAllocationService.allocateTrainer(saved);
+            allocatedCohorts.add(cohortService.mapToResponse(saved));
             successfulRows++;
         }
 
         int failedRows = totalRows - successfulRows;
 
-        return new CohortUploadResponse(totalRows, successfulRows, failedRows, errors);
+        return new CohortUploadResponse(totalRows, successfulRows, failedRows, errors, allocatedCohorts);
     }
 
     /**
