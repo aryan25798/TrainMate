@@ -9,798 +9,359 @@ import { AuthService } from '../../services/auth.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="login-wrapper">
-      
-      <!-- LEFT HERO PANEL (Desktop >= 992px) -->
-      <aside class="hero-panel d-none d-lg-flex">
-        <div class="hero-inner">
-          
-          <!-- Brand Mark -->
-          <div class="hero-brand">
-            <div class="brand-badge">
-              <div class="brand-icon">
-                <i class="bi bi-mortarboard-fill"></i>
-              </div>
-              <div class="brand-titles">
-                <span class="brand-name">TRAINMATE</span>
-                <span class="brand-org">Cognizant Academy</span>
-              </div>
-            </div>
-            <span class="enterprise-tag">v2.4 Enterprise</span>
-          </div>
-
-          <!-- Hero Main Content -->
-          <div class="hero-content">
-            <div class="status-pill mb-3">
-              <span class="pulse-dot"></span>
-              <span>Academy Resource Gateway &bull; Active</span>
-            </div>
-
-            <h1 class="hero-title">
-              Orchestrating Academy Excellence across Global Delivery.
-            </h1>
-
-            <p class="hero-desc">
-              Automated cohort lifecycle management, multi-variable trainer suitability allocation,
-              and real-time capacity balancing across enterprise training streams.
-            </p>
-
-            <!-- Operational Value Pillars -->
-            <div class="hero-pillars">
-              <div class="pillar-card">
-                <div class="pillar-icon">
-                  <i class="bi bi-cpu"></i>
-                </div>
-                <div class="pillar-text">
-                  <div class="pillar-title">100-Point Allocation Matrix</div>
-                  <div class="pillar-sub">Deterministic scoring on skills, availability, and active load</div>
-                </div>
-              </div>
-
-              <div class="pillar-card">
-                <div class="pillar-icon">
-                  <i class="bi bi-file-earmark-excel"></i>
-                </div>
-                <div class="pillar-text">
-                  <div class="pillar-title">Batch XLSX Cohort Ingestion</div>
-                  <div class="pillar-sub">Instant parsing and validation with conflict notifications</div>
-                </div>
-              </div>
-
-              <div class="pillar-card">
-                <div class="pillar-icon">
-                  <i class="bi bi-shield-check"></i>
-                </div>
-                <div class="pillar-text">
-                  <div class="pillar-title">Role-Based Governance</div>
-                  <div class="pillar-sub">Dedicated workspaces for Coaches, Trainers, and Operations Admins</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Hero Footer -->
-          <div class="hero-footer">
-            <div class="d-flex align-items-center gap-2">
-              <i class="bi bi-check-circle-fill text-info"></i>
-              <span>Cognizant Digital Business & Technology</span>
-            </div>
-            <span>Secure 256-Bit TLS</span>
-          </div>
-
-        </div>
-      </aside>
-
-      <!-- RIGHT FORM PANEL (All Viewports) -->
-      <main class="form-panel">
+    <div class="login-page">
+      <div class="login-card">
         
-        <!-- Mobile Header (< 992px) -->
-        <header class="mobile-header d-lg-none">
-          <div class="d-flex align-items-center gap-2.5">
-            <div class="brand-icon sm">
-              <i class="bi bi-mortarboard-fill"></i>
-            </div>
-            <div>
-              <span class="fw-bold text-dark d-block lh-1" style="font-size: 1.15rem; letter-spacing: 0.02em;">TRAINMATE</span>
-              <span class="text-muted" style="font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;">Cognizant Academy</span>
-            </div>
+        <!-- Minimal Brand Header -->
+        <div class="brand-header">
+          <div class="brand-logo">
+            <i class="bi bi-mortarboard-fill"></i>
           </div>
-          <span class="badge bg-light text-primary border small fw-semibold px-2 py-1">Enterprise SSO</span>
-        </header>
+          <h1 class="login-title">Sign in</h1>
+          <p class="login-subtitle">to continue to <strong>TrainMate</strong></p>
+        </div>
 
-        <!-- Centered Sign-In Box -->
-        <div class="form-container">
+        <!-- Alert Notification -->
+        <div class="login-alert alert-danger" *ngIf="errorMessage">
+          <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
+          <span>{{ errorMessage }}</span>
+        </div>
+
+        <div class="login-alert alert-info" *ngIf="infoMessage">
+          <i class="bi bi-info-circle-fill flex-shrink-0"></i>
+          <span>{{ infoMessage }}</span>
+        </div>
+
+        <!-- Form -->
+        <form (ngSubmit)="onLogin()" autocomplete="on">
           
-          <div class="form-intro">
-            <h2 class="form-title">Associate Sign In</h2>
-            <p class="form-subtitle">Enter your corporate credentials to access your Academy workspace.</p>
+          <!-- ID / Email -->
+          <div class="form-field">
+            <label for="loginId">Associate ID or Email</label>
+            <input
+              id="loginId"
+              type="text"
+              class="form-control-minimal"
+              placeholder="e.g. coach01 or name&#64;cognizant.com"
+              [(ngModel)]="loginId"
+              name="loginId"
+              autocomplete="username"
+              required
+              autofocus
+            />
           </div>
 
-          <!-- Error Alert Banner -->
-          <div class="alert-error" *ngIf="errorMessage">
-            <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
-            <span>{{ errorMessage }}</span>
+          <!-- Password -->
+          <div class="form-field">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label for="password" class="mb-0">Password</label>
+              <button type="button" class="link-btn" (click)="onForgot()">Forgot?</button>
+            </div>
+            <div class="password-wrap">
+              <input
+                id="password"
+                [type]="showPassword ? 'text' : 'password'"
+                class="form-control-minimal"
+                placeholder="Enter your password"
+                [(ngModel)]="password"
+                name="password"
+                autocomplete="current-password"
+                required
+              />
+              <button
+                type="button"
+                class="eye-btn"
+                (click)="showPassword = !showPassword"
+                tabindex="-1"
+                aria-label="Toggle password visibility">
+                <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
+              </button>
+            </div>
           </div>
 
-          <!-- Main Authentication Form -->
-          <form (ngSubmit)="onLogin()" autocomplete="on">
-            
-            <!-- Associate ID or Email Input -->
-            <div class="field-group">
-              <label class="field-label" for="userLoginId">Corporate Email or Associate ID</label>
-              <div class="input-container">
-                <i class="bi bi-person input-affix"></i>
-                <input
-                  id="userLoginId"
-                  type="text"
-                  class="field-input"
-                  placeholder="e.g. coach01@cognizant.com or coach01"
-                  [(ngModel)]="loginId"
-                  name="loginId"
-                  autocomplete="username"
-                  required
-                />
-              </div>
-            </div>
-
-            <!-- Password Input -->
-            <div class="field-group">
-              <div class="d-flex justify-content-between align-items-center mb-1.5">
-                <label class="field-label mb-0" for="userPassword">Password</label>
-                <button
-                  type="button"
-                  class="text-link small"
-                  (click)="showHelpModal = true"
-                  tabindex="-1">
-                  Need help?
-                </button>
-              </div>
-              <div class="input-container">
-                <i class="bi bi-shield-lock input-affix"></i>
-                <input
-                  id="userPassword"
-                  [type]="showPassword ? 'text' : 'password'"
-                  class="field-input with-action"
-                  placeholder="Enter your password"
-                  [(ngModel)]="password"
-                  name="password"
-                  autocomplete="current-password"
-                  required
-                />
-                <button
-                  type="button"
-                  class="password-toggle"
-                  (click)="showPassword = !showPassword"
-                  tabindex="-1"
-                  [title]="showPassword ? 'Hide password' : 'Show password'">
-                  <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
-                </button>
-              </div>
-            </div>
-
-            <!-- Options Row -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-              <label class="checkbox-container">
-                <input
-                  type="checkbox"
-                  class="checkbox-input"
-                  [(ngModel)]="rememberMe"
-                  name="rememberMe"
-                />
-                <span class="checkbox-text">Keep me signed in</span>
-              </label>
-              <span class="tls-badge">
-                <i class="bi bi-lock-fill text-success me-1"></i>
-                TLS 1.3
-              </span>
-            </div>
-
-            <!-- Primary Submit Button -->
-            <button
-              type="submit"
-              class="btn-primary-auth"
-              [disabled]="loading">
-              <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
-              <span *ngIf="!loading">Sign In to Workspace</span>
-              <i *ngIf="!loading" class="bi bi-arrow-right ms-2"></i>
-            </button>
-
-            <!-- SSO Divider -->
-            <div class="divider-row">
-              <span>or</span>
-            </div>
-
-            <!-- SSO Fast-Path Button -->
-            <button
-              type="button"
-              class="btn-sso-auth"
-              (click)="onSsoLogin()"
-              [disabled]="loading">
-              <i class="bi bi-building-check me-2 text-primary"></i>
-              <span>Sign In with Cognizant SSO</span>
-            </button>
-          </form>
-
-          <!-- Discreet Evaluation Credentials Trigger -->
-          <div class="eval-strip">
-            <button
-              type="button"
-              class="eval-trigger-link"
-              (click)="showEvalModal = true">
-              <i class="bi bi-info-circle me-1 text-primary"></i>
-              <span>Evaluation & Testing Credentials</span>
-            </button>
+          <!-- Keep Signed In -->
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <label class="check-label">
+              <input type="checkbox" [(ngModel)]="rememberMe" name="rememberMe" />
+              <span>Remember me</span>
+            </label>
           </div>
 
-          <!-- Card Security Footer -->
-          <footer class="form-footer">
-            <p class="mb-1 text-muted small">
-              Protected by Cognizant Enterprise Security Standards &bull; Authorized use only
-            </p>
-            <p class="mb-0 text-muted" style="font-size: 0.72rem; opacity: 0.85;">
-              &copy; 2026 Cognizant Technology Solutions. All rights reserved.
-            </p>
-          </footer>
+          <!-- Primary Sign In -->
+          <button type="submit" class="btn-signin" [disabled]="loading">
+            <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+            <span>Sign in</span>
+          </button>
 
+          <!-- Divider -->
+          <div class="or-divider">
+            <span>or</span>
+          </div>
+
+          <!-- Single Sign-On -->
+          <button type="button" class="btn-sso" (click)="onSsoLogin()" [disabled]="loading">
+            <i class="bi bi-shield-lock me-2 text-primary"></i>
+            <span>Sign in with SSO</span>
+          </button>
+        </form>
+
+        <!-- Discreet Demo Helper -->
+        <div class="demo-section">
+          <button type="button" class="demo-toggle" (click)="showDemoHints = !showDemoHints">
+            <span>Quick test accounts</span>
+            <i class="bi" [ngClass]="showDemoHints ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          </button>
+
+          <div class="demo-pills" *ngIf="showDemoHints">
+            <button type="button" class="demo-pill" (click)="fillDemo('coach01', 'coach123')">
+              Coach
+            </button>
+            <button type="button" class="demo-pill" (click)="fillDemo('trainer01', 'trainer123')">
+              Trainer
+            </button>
+            <button type="button" class="demo-pill" (click)="fillDemo('admin01', 'admin123')">
+              Admin
+            </button>
+          </div>
         </div>
-      </main>
 
-      <!-- EVALUATION CREDENTIALS MODAL -->
-      <div class="modal-backdrop" *ngIf="showEvalModal" (click)="showEvalModal = false">
-        <div class="modal-box" (click)="$event.stopPropagation()">
-          <div class="modal-header-row">
-            <div>
-              <h5 class="modal-title mb-0">Evaluation Accounts</h5>
-              <p class="text-muted small mb-0">Select an enterprise persona to pre-fill credentials for testing</p>
-            </div>
-            <button type="button" class="btn-close-modal" (click)="showEvalModal = false">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
-
-          <div class="modal-body-content">
-            
-            <!-- Coach Card -->
-            <div class="account-card" (click)="applyAccount('coach01', 'coach123')">
-              <div class="account-icon blue">
-                <i class="bi bi-person-workspace"></i>
-              </div>
-              <div class="account-details">
-                <div class="account-name">Coach Workspace</div>
-                <div class="account-cred">ID: <code>coach01</code> &bull; Email: <code>coach01&#64;cognizant.com</code></div>
-                <div class="account-role-desc">Upload cohorts via XLSX, view suitability matrix, manage schedules</div>
-              </div>
-              <button type="button" class="btn btn-sm btn-outline-primary select-btn">
-                Select
-              </button>
-            </div>
-
-            <!-- Trainer Card -->
-            <div class="account-card" (click)="applyAccount('trainer01', 'trainer123')">
-              <div class="account-icon green">
-                <i class="bi bi-person-video3"></i>
-              </div>
-              <div class="account-details">
-                <div class="account-name">Trainer Workspace</div>
-                <div class="account-cred">ID: <code>trainer01</code> &bull; Email: <code>trainer01&#64;cognizant.com</code></div>
-                <div class="account-role-desc">View assigned cohorts, syllabus details, and mailbox notifications</div>
-              </div>
-              <button type="button" class="btn btn-sm btn-outline-primary select-btn">
-                Select
-              </button>
-            </div>
-
-            <!-- Admin Card -->
-            <div class="account-card" (click)="applyAccount('admin01', 'admin123')">
-              <div class="account-icon purple">
-                <i class="bi bi-shield-lock"></i>
-              </div>
-              <div class="account-details">
-                <div class="account-name">Administrator Workspace</div>
-                <div class="account-cred">ID: <code>admin01</code> &bull; Email: <code>admin01&#64;cognizant.com</code></div>
-                <div class="account-role-desc">Manage trainer profiles, override cohort allocations, platform administration</div>
-              </div>
-              <button type="button" class="btn btn-sm btn-outline-primary select-btn">
-                Select
-              </button>
-            </div>
-
-          </div>
-
-          <div class="modal-footer-row">
-            <span class="text-muted small">Passwords are pre-set for demonstration purposes</span>
-            <button type="button" class="btn btn-sm btn-secondary" (click)="showEvalModal = false">
-              Close
-            </button>
-          </div>
+        <div class="card-footer-note">
+          Cognizant Academy Operations
         </div>
       </div>
 
-      <!-- NEED HELP MODAL -->
-      <div class="modal-backdrop" *ngIf="showHelpModal" (click)="showHelpModal = false">
-        <div class="modal-box modal-box-sm" (click)="$event.stopPropagation()">
-          <div class="modal-header-row">
-            <h5 class="modal-title mb-0">Need Help Signing In?</h5>
-            <button type="button" class="btn-close-modal" (click)="showHelpModal = false">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
-          <div class="modal-body-content py-3">
-            <p class="text-secondary small mb-3">
-              TrainMate is an internal workforce allocation portal for Cognizant Academy.
-            </p>
-            <ul class="text-secondary small ps-3 mb-3">
-              <li class="mb-2"><strong>First time accessing?</strong> Your Associate ID is linked to your corporate LDAP / SSO directory.</li>
-              <li class="mb-2"><strong>Password reset:</strong> Use your standard Cognizant OneSpace self-service password portal.</li>
-              <li><strong>Technical assistance:</strong> Contact the Academy Operations team or submit an internal ticket via OneSpace IT Support.</li>
-            </ul>
-          </div>
-          <div class="modal-footer-row">
-            <button type="button" class="btn btn-sm btn-primary w-100" (click)="showHelpModal = false">
-              Got it
-            </button>
-          </div>
-        </div>
-      </div>
-
+      <!-- Page Footer -->
+      <footer class="page-footer">
+        <span>&copy; 2026 Cognizant</span>
+        <span class="dot">&bull;</span>
+        <button type="button" class="link-btn-subtle" (click)="onForgot()">Help</button>
+        <span class="dot">&bull;</span>
+        <span class="text-muted">Privacy & Terms</span>
+      </footer>
     </div>
   `,
   styles: [`
-    /* ==========================================================================
-       CONTAINER & LAYOUT
-       ========================================================================== */
-    .login-wrapper {
-      display: flex;
+    .login-page {
       min-height: 100vh;
       width: 100vw;
-      background-color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem 1rem;
+      background: #f8fafc;
+      background: radial-gradient(circle at 50% 10%, #ffffff 0%, #f1f5f9 100%);
       font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
-      overflow-x: hidden;
     }
 
-    /* ==========================================================================
-       LEFT HERO PANEL (Executive Cognizant Aesthetic)
-       ========================================================================== */
-    .hero-panel {
-      flex: 1.15;
-      background: linear-gradient(150deg, #000038 0%, #060c28 55%, #00164d 100%);
-      color: #ffffff;
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid rgba(255, 255, 255, 0.08);
+    .login-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 2.5rem 2.25rem;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 
+        0 10px 25px -5px rgba(0, 0, 0, 0.05),
+        0 8px 10px -6px rgba(0, 0, 0, 0.02);
+      animation: fadeInCard 0.25s ease;
     }
 
-    /* Ambient lighting effects */
-    .hero-panel::before {
-      content: '';
-      position: absolute;
-      top: -150px;
-      right: -150px;
-      width: 500px;
-      height: 500px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(0, 210, 255, 0.12) 0%, rgba(0, 102, 245, 0.04) 50%, transparent 70%);
-      pointer-events: none;
+    @keyframes fadeInCard {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    .hero-panel::after {
-      content: '';
-      position: absolute;
-      bottom: -150px;
-      left: -150px;
-      width: 550px;
-      height: 550px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(0, 102, 245, 0.18) 0%, rgba(0, 0, 56, 0.08) 60%, transparent 75%);
-      pointer-events: none;
+    .brand-header {
+      text-align: center;
+      margin-bottom: 1.5rem;
     }
 
-    .hero-inner {
-      position: relative;
-      z-index: 1;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 3.5rem 4rem;
-      max-width: 680px;
-    }
-
-    .hero-brand {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .brand-badge {
-      display: flex;
-      align-items: center;
-      gap: 0.9rem;
-    }
-
-    .brand-icon {
-      width: 42px;
-      height: 42px;
+    .brand-logo {
+      width: 44px;
+      height: 44px;
       border-radius: 12px;
-      background: linear-gradient(135deg, #00d2ff 0%, #0066f5 100%);
+      background: linear-gradient(135deg, #000038 0%, #0066f5 100%);
       color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 1.35rem;
-      box-shadow: 0 4px 14px rgba(0, 102, 245, 0.35);
-      flex-shrink: 0;
+      margin: 0 auto 0.85rem auto;
+      box-shadow: 0 4px 12px rgba(0, 102, 245, 0.25);
     }
 
-    .brand-icon.sm {
-      width: 36px;
-      height: 36px;
-      font-size: 1.15rem;
-      border-radius: 10px;
-    }
-
-    .brand-titles {
-      line-height: 1.15;
-    }
-
-    .brand-name {
-      display: block;
-      font-size: 1.25rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      color: #ffffff;
-    }
-
-    .brand-org {
-      display: block;
-      font-size: 0.72rem;
+    .login-title {
+      font-size: 1.45rem;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #38bdf8;
-    }
-
-    .enterprise-tag {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #94a3b8;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      padding: 0.25rem 0.65rem;
-      border-radius: 20px;
-    }
-
-    .hero-content {
-      margin: auto 0;
-      padding: 2rem 0;
-    }
-
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: rgba(0, 210, 255, 0.08);
-      border: 1px solid rgba(0, 210, 255, 0.2);
-      padding: 0.3rem 0.8rem;
-      border-radius: 20px;
-      font-size: 0.775rem;
-      font-weight: 600;
-      color: #38bdf8;
-    }
-
-    .pulse-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background-color: #38bdf8;
-      box-shadow: 0 0 6px #38bdf8;
-    }
-
-    .hero-title {
-      font-size: 2.15rem;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      line-height: 1.25;
-      color: #ffffff;
-      margin-bottom: 1rem;
-    }
-
-    .hero-desc {
-      font-size: 0.975rem;
-      line-height: 1.6;
-      color: #cbd5e1;
-      margin-bottom: 2rem;
-    }
-
-    .hero-pillars {
-      display: flex;
-      flex-direction: column;
-      gap: 0.85rem;
-    }
-
-    .pillar-card {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      background: rgba(255, 255, 255, 0.035);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
-      padding: 0.85rem 1.15rem;
-      backdrop-filter: blur(8px);
-      transition: background 0.2s ease;
-    }
-
-    .pillar-card:hover {
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    .pillar-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 9px;
-      background: rgba(0, 102, 245, 0.25);
-      color: #60a5fa;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.15rem;
-      flex-shrink: 0;
-    }
-
-    .pillar-title {
-      font-size: 0.885rem;
-      font-weight: 700;
-      color: #ffffff;
-      margin-bottom: 0.1rem;
-    }
-
-    .pillar-sub {
-      font-size: 0.775rem;
-      color: #94a3b8;
-    }
-
-    .hero-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-      padding-top: 1.25rem;
-      font-size: 0.775rem;
-      color: #94a3b8;
-    }
-
-    /* ==========================================================================
-       RIGHT FORM PANEL (Clean, High-Trust Corporate Auth)
-       ========================================================================== */
-    .form-panel {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 2.5rem 1.5rem;
-      background-color: #ffffff;
-      position: relative;
-    }
-
-    .mobile-header {
-      width: 100%;
-      max-width: 420px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 2rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid #e2e8f0;
-    }
-
-    .form-container {
-      width: 100%;
-      max-width: 420px;
-      margin: 0 auto;
-    }
-
-    .form-intro {
-      margin-bottom: 1.75rem;
-    }
-
-    .form-title {
-      font-size: 1.65rem;
-      font-weight: 800;
-      letter-spacing: -0.025em;
       color: #0f172a;
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.2rem;
+      letter-spacing: -0.02em;
     }
 
-    .form-subtitle {
-      font-size: 0.885rem;
+    .login-subtitle {
+      font-size: 0.875rem;
       color: #64748b;
       margin: 0;
-      line-height: 1.45;
     }
 
-    /* Alert Banner */
-    .alert-error {
-      background-color: #fef2f2;
-      border: 1px solid #fecaca;
-      border-radius: 10px;
-      padding: 0.75rem 1rem;
-      margin-bottom: 1.25rem;
+    .login-subtitle strong {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    /* Alerts */
+    .login-alert {
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.8125rem;
       display: flex;
       align-items: flex-start;
-      gap: 0.65rem;
-      color: #b91c1c;
-      font-size: 0.825rem;
+      gap: 0.5rem;
+      margin-bottom: 1.15rem;
       line-height: 1.4;
-      animation: alertFadeIn 0.2s ease;
     }
 
-    @keyframes alertFadeIn {
-      from { opacity: 0; transform: translateY(-4px); }
-      to { opacity: 1; transform: translateY(0); }
+    .alert-danger {
+      background-color: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
     }
 
-    /* Form Fields */
-    .field-group {
-      margin-bottom: 1.2rem;
+    .alert-info {
+      background-color: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
     }
 
-    .field-label {
-      display: block;
-      font-size: 0.825rem;
+    /* Fields */
+    .form-field {
+      margin-bottom: 1.05rem;
+    }
+
+    .form-field label {
+      font-size: 0.8125rem;
       font-weight: 600;
       color: #334155;
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.35rem;
+      display: block;
     }
 
-    .input-container {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-
-    .input-affix {
-      position: absolute;
-      left: 1rem;
-      color: #94a3b8;
-      font-size: 1.05rem;
-      pointer-events: none;
-      transition: color 0.15s ease;
-    }
-
-    .field-input {
+    .form-control-minimal {
       width: 100%;
-      height: 46px;
-      padding: 0 1rem 0 2.65rem;
-      font-size: 0.925rem;
+      height: 42px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 0 0.875rem;
+      font-size: 0.9rem;
       color: #0f172a;
-      background-color: #f8fafc;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 10px;
-      transition: all 0.15s ease;
+      background: #ffffff;
       outline: none;
+      transition: all 0.15s ease;
     }
 
-    .field-input.with-action {
-      padding-right: 2.65rem;
-    }
-
-    .field-input:focus {
-      background-color: #ffffff;
+    .form-control-minimal:focus {
       border-color: #0066f5;
-      box-shadow: 0 0 0 3.5px rgba(0, 102, 245, 0.12);
+      box-shadow: 0 0 0 3px rgba(0, 102, 245, 0.12);
     }
 
-    .input-container:focus-within .input-affix {
-      color: #0066f5;
+    .password-wrap {
+      position: relative;
     }
 
-    .password-toggle {
+    .password-wrap input {
+      padding-right: 2.5rem;
+    }
+
+    .eye-btn {
       position: absolute;
-      right: 0.75rem;
+      right: 0.65rem;
+      top: 50%;
+      transform: translateY(-50%);
       border: none;
       background: transparent;
       color: #94a3b8;
-      font-size: 1.05rem;
+      font-size: 1rem;
       padding: 0.25rem;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 6px;
       transition: color 0.15s ease;
     }
 
-    .password-toggle:hover {
+    .eye-btn:hover {
       color: #334155;
     }
 
-    .text-link {
+    .link-btn {
       border: none;
       background: transparent;
       color: #0066f5;
+      font-size: 0.75rem;
       font-weight: 600;
       cursor: pointer;
       padding: 0;
       transition: color 0.15s ease;
     }
 
-    .text-link:hover {
+    .link-btn:hover {
       color: #004ecc;
       text-decoration: underline;
     }
 
-    /* Checkbox & TLS */
-    .checkbox-container {
+    .check-label {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.45rem;
+      font-size: 0.8125rem;
+      color: #64748b;
       cursor: pointer;
       user-select: none;
       margin: 0;
     }
 
-    .checkbox-input {
-      width: 16px;
-      height: 16px;
+    .check-label input {
+      width: 15px;
+      height: 15px;
       border-radius: 4px;
-      border: 1.5px solid #cbd5e1;
       accent-color: #0066f5;
       cursor: pointer;
     }
 
-    .checkbox-text {
-      font-size: 0.815rem;
-      color: #64748b;
-    }
-
-    .tls-badge {
-      font-size: 0.725rem;
-      color: #64748b;
-      font-weight: 500;
-    }
-
-    /* Submit Button */
-    .btn-primary-auth {
+    /* Buttons */
+    .btn-signin {
       width: 100%;
-      height: 48px;
-      background: linear-gradient(135deg, #000038 0%, #004ecc 100%);
+      height: 42px;
+      background: #000038;
       color: #ffffff;
       border: none;
-      border-radius: 10px;
-      font-size: 0.95rem;
-      font-weight: 700;
-      letter-spacing: -0.01em;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 4px 14px rgba(0, 78, 204, 0.25);
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: background 0.15s ease;
     }
 
-    .btn-primary-auth:hover:not(:disabled) {
-      background: linear-gradient(135deg, #000048 0%, #003ca0 100%);
-      transform: translateY(-1px);
-      box-shadow: 0 6px 18px rgba(0, 78, 204, 0.35);
+    .btn-signin:hover:not(:disabled) {
+      background: #001254;
     }
 
-    .btn-primary-auth:disabled {
+    .btn-signin:disabled {
       opacity: 0.7;
       cursor: not-allowed;
-      transform: none;
     }
 
-    /* Divider */
-    .divider-row {
+    .or-divider {
       position: relative;
       text-align: center;
-      margin: 1.25rem 0;
+      margin: 1.15rem 0;
     }
 
-    .divider-row::before {
+    .or-divider::before {
       content: '';
       position: absolute;
       top: 50%;
@@ -810,263 +371,128 @@ import { AuthService } from '../../services/auth.service';
       background-color: #e2e8f0;
     }
 
-    .divider-row span {
+    .or-divider span {
       position: relative;
-      background-color: #ffffff;
-      padding: 0 0.75rem;
-      font-size: 0.75rem;
+      background: #ffffff;
+      padding: 0 0.5rem;
+      font-size: 0.725rem;
       color: #94a3b8;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
     }
 
-    /* SSO Button */
-    .btn-sso-auth {
+    .btn-sso {
       width: 100%;
-      height: 44px;
-      background-color: #f8fafc;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 10px;
+      height: 40px;
+      background: #ffffff;
       color: #334155;
-      font-size: 0.885rem;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.85rem;
       font-weight: 600;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
       transition: all 0.15s ease;
     }
 
-    .btn-sso-auth:hover:not(:disabled) {
-      background-color: #f1f5f9;
+    .btn-sso:hover:not(:disabled) {
+      background: #f8fafc;
       border-color: #cbd5e1;
       color: #0f172a;
     }
 
-    /* Evaluation Trigger Link */
-    .eval-strip {
+    /* Demo Hint */
+    .demo-section {
+      margin-top: 1.25rem;
       text-align: center;
-      margin-top: 1.5rem;
     }
 
-    .eval-trigger-link {
+    .demo-toggle {
       border: none;
       background: transparent;
-      color: #64748b;
-      font-size: 0.8rem;
-      font-weight: 600;
+      color: #94a3b8;
+      font-size: 0.75rem;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      padding: 0.35rem 0.75rem;
-      border-radius: 20px;
-      transition: all 0.15s ease;
-    }
-
-    .eval-trigger-link:hover {
-      color: #0066f5;
-      background-color: #f1f5f9;
-    }
-
-    /* Footer */
-    .form-footer {
-      margin-top: 2rem;
-      text-align: center;
-      border-top: 1px solid #f1f5f9;
-      padding-top: 1.25rem;
-    }
-
-    /* ==========================================================================
-       MODAL DIALOG (Evaluation Credentials & Help)
-       ========================================================================== */
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background-color: rgba(15, 23, 42, 0.6);
-      backdrop-filter: blur(4px);
-      z-index: 1050;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1.25rem;
-      animation: fadeInModal 0.2s ease;
-    }
-
-    @keyframes fadeInModal {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    .modal-box {
-      width: 100%;
-      max-width: 520px;
-      background: #ffffff;
-      border-radius: 16px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-      border: 1px solid #e2e8f0;
-      overflow: hidden;
-      animation: scaleUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .modal-box-sm {
-      max-width: 440px;
-    }
-
-    @keyframes scaleUpModal {
-      from { transform: scale(0.96) translateY(8px); opacity: 0; }
-      to { transform: scale(1) translateY(0); opacity: 1; }
-    }
-
-    .modal-header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid #e2e8f0;
-      background-color: #f8fafc;
-    }
-
-    .modal-title {
-      font-size: 1.15rem;
-      font-weight: 700;
-      color: #0f172a;
-    }
-
-    .btn-close-modal {
-      border: none;
-      background: transparent;
-      color: #94a3b8;
-      font-size: 1.1rem;
-      padding: 0.25rem;
-      cursor: pointer;
-      border-radius: 6px;
+      gap: 0.3rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
       transition: color 0.15s ease;
     }
 
-    .btn-close-modal:hover {
-      color: #0f172a;
+    .demo-toggle:hover {
+      color: #475569;
     }
 
-    .modal-body-content {
-      padding: 1.25rem 1.5rem;
+    .demo-pills {
       display: flex;
-      flex-direction: column;
-      gap: 0.85rem;
-      max-height: 70vh;
-      overflow-y: auto;
+      gap: 0.4rem;
+      justify-content: center;
+      margin-top: 0.5rem;
     }
 
-    .account-card {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 0.85rem 1rem;
-      border-radius: 12px;
+    .demo-pill {
       border: 1px solid #e2e8f0;
-      background-color: #ffffff;
+      background: #f8fafc;
+      color: #475569;
+      font-size: 0.725rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
       cursor: pointer;
       transition: all 0.15s ease;
     }
 
-    .account-card:hover {
-      background-color: #f8fafc;
-      border-color: #0066f5;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 102, 245, 0.08);
-    }
-
-    .account-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-      flex-shrink: 0;
-    }
-
-    .account-icon.blue { background-color: #eff6ff; color: #0066f5; }
-    .account-icon.green { background-color: #f0fdf4; color: #16a34a; }
-    .account-icon.purple { background-color: #faf5ff; color: #9333ea; }
-
-    .account-details {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .account-name {
-      font-size: 0.9rem;
-      font-weight: 700;
+    .demo-pill:hover {
+      background: #e2e8f0;
       color: #0f172a;
-      margin-bottom: 0.15rem;
+      border-color: #cbd5e1;
     }
 
-    .account-cred {
-      font-size: 0.775rem;
-      color: #64748b;
-      margin-bottom: 0.2rem;
-    }
-
-    .account-cred code {
-      color: #004ecc;
-      background-color: #f1f5f9;
-      padding: 0.1rem 0.35rem;
-      border-radius: 4px;
-      font-size: 0.75rem;
-    }
-
-    .account-role-desc {
-      font-size: 0.725rem;
+    .card-footer-note {
+      text-align: center;
+      font-size: 0.7rem;
       color: #94a3b8;
-      line-height: 1.3;
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid #f1f5f9;
     }
 
-    .select-btn {
-      flex-shrink: 0;
-    }
-
-    .modal-footer-row {
+    /* Page Footer */
+    .page-footer {
+      margin-top: 1.5rem;
+      font-size: 0.75rem;
+      color: #94a3b8;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 1rem 1.5rem;
-      border-top: 1px solid #e2e8f0;
-      background-color: #f8fafc;
+      gap: 0.5rem;
     }
 
-    /* ==========================================================================
-       RESPONSIVE BREAKPOINTS
-       ========================================================================== */
-    @media (max-width: 991.98px) {
-      .form-panel {
-        min-height: 100vh;
-        justify-content: flex-start;
-        padding: 1.5rem 1.25rem 2rem 1.25rem;
-      }
-
-      .form-container {
-        margin-top: auto;
-        margin-bottom: auto;
-      }
+    .dot {
+      opacity: 0.5;
     }
 
-    @media (max-width: 575.98px) {
-      .form-panel {
-        padding: 1rem 1rem 1.5rem 1rem;
-      }
+    .link-btn-subtle {
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      cursor: pointer;
+      padding: 0;
+      transition: color 0.15s ease;
+    }
 
-      .form-title {
-        font-size: 1.45rem;
-      }
+    .link-btn-subtle:hover {
+      color: #475569;
+      text-decoration: underline;
+    }
 
-      .field-input {
-        height: 44px;
-        font-size: 0.885rem;
-      }
-
-      .btn-primary-auth {
-        height: 46px;
+    @media (max-width: 480px) {
+      .login-card {
+        padding: 2rem 1.5rem;
+        box-shadow: none;
+        border-color: #e2e8f0;
       }
     }
   `]
@@ -1076,10 +502,10 @@ export class LoginComponent implements OnInit {
   password: string = 'coach123';
   loading: boolean = false;
   errorMessage: string = '';
+  infoMessage: string = '';
   showPassword: boolean = false;
   rememberMe: boolean = true;
-  showEvalModal: boolean = false;
-  showHelpModal: boolean = false;
+  showDemoHints: boolean = false;
 
   constructor(private authService: AuthService, private router: Router) {}
 
@@ -1089,21 +515,28 @@ export class LoginComponent implements OnInit {
     }
   }
 
-  applyAccount(id: string, pass: string): void {
+  fillDemo(id: string, pass: string): void {
     this.loginId = id;
     this.password = pass;
     this.errorMessage = '';
-    this.showEvalModal = false;
+    this.infoMessage = `Loaded ${id} credentials. Click Sign in to proceed.`;
+  }
+
+  onForgot(): void {
+    this.infoMessage = 'Please contact your Cognizant Academy administrator or OneSpace IT Helpdesk for password resets.';
+    this.errorMessage = '';
   }
 
   onLogin(): void {
     if (!this.loginId || !this.password) {
-      this.errorMessage = 'Please provide both your Corporate Email / ID and password.';
+      this.errorMessage = 'Please enter your Associate ID or email and password.';
+      this.infoMessage = '';
       return;
     }
 
     this.loading = true;
     this.errorMessage = '';
+    this.infoMessage = '';
 
     this.authService.login({
       loginId: this.loginId.trim(),
@@ -1125,7 +558,6 @@ export class LoginComponent implements OnInit {
   }
 
   onSsoLogin(): void {
-    // Enterprise SSO simulated fast-path using active credentials
     this.onLogin();
   }
 }
