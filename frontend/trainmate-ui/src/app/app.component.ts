@@ -15,79 +15,78 @@ import { AuthService } from './services/auth.service';
     <app-toast-container></app-toast-container>
 
     <!-- If on Login page, show full-screen view -->
-    <div *ngIf="isAuthPage">
+    <div *ngIf="isAuthPage" class="login-container">
       <router-outlet></router-outlet>
     </div>
 
-    <!-- If logged in on dashboard/app pages, show corporate dashboard layout with responsive sidebar -->
-    <div *ngIf="!isAuthPage" class="d-flex flex-column min-vh-100">
+    <!-- If logged in on dashboard/app pages, show enterprise viewport-locked shell -->
+    <div *ngIf="!isAuthPage" class="app-shell">
       
-      <!-- Mobile Top Navigation Bar -->
-      <div class="mobile-topbar">
-        <div class="d-flex align-items-center gap-2">
-          <button class="btn btn-sm btn-outline-light border-0 px-1 py-0" (click)="sidebarOpen = !sidebarOpen">
-            <i class="bi bi-list fs-3"></i>
-          </button>
-          <div class="fw-bold fs-6 d-flex align-items-center gap-2 text-white">
-            <i class="bi bi-mortarboard-fill text-info"></i>
-            <span>TRAINMATE</span>
-          </div>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-          <span class="badge bg-primary-subtle text-primary">{{ currentUserRole }}</span>
-          <button class="btn btn-sm btn-outline-light border-0 px-1" (click)="onLogout()" title="Sign Out">
-            <i class="bi bi-box-arrow-right fs-5"></i>
-          </button>
-        </div>
-      </div>
-
       <!-- Mobile Backdrop Overlay -->
       <div class="mobile-backdrop" [class.show]="sidebarOpen" (click)="sidebarOpen = false"></div>
 
-      <div class="app-container">
-        <app-sidebar [isOpen]="sidebarOpen" (linkClicked)="sidebarOpen = false"></app-sidebar>
+      <!-- Persistent Full-Height Sidebar (Locked to Screen, never scrolls out of view) -->
+      <app-sidebar
+        [isOpen]="sidebarOpen"
+        [isCollapsed]="sidebarCollapsed"
+        (linkClicked)="sidebarOpen = false">
+      </app-sidebar>
+
+      <!-- Main Viewport Column (Fixed Header + Independently Scrollable Main Content) -->
+      <div class="main-wrapper">
         
-        <div class="d-flex flex-column flex-grow-1" style="min-width: 0; overflow-x: hidden;">
-          
-          <!-- Desktop Corporate Header Bar -->
-          <header class="top-header-bar">
+        <!-- Corporate Top Header Bar with Universal Hamburger Menu -->
+        <header class="top-header-bar">
+          <div class="d-flex align-items-center">
+            <!-- Universal Responsive Hamburger Toggle Button -->
+            <button
+              type="button"
+              class="hamburger-btn"
+              (click)="toggleSidebar()"
+              [title]="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+              <i class="bi bi-list"></i>
+            </button>
+
+            <!-- Brand Info -->
             <div class="d-flex align-items-center gap-2">
-              <span class="fw-bold text-dark fs-6">Cognizant Academy</span>
-              <span class="text-muted small">&bull;</span>
-              <span class="text-secondary small fw-medium">Global Cohort & Trainer Resource Operations</span>
+              <span class="fw-bold text-dark fs-6 text-nowrap">Cognizant Academy</span>
+              <span class="text-muted small d-none d-md-inline">&bull;</span>
+              <span class="text-secondary small fw-medium d-none d-md-inline text-truncate">Global Cohort & Trainer Resource Operations</span>
             </div>
+          </div>
 
-            <div class="d-flex align-items-center gap-3">
-              <!-- Role Badge -->
-              <span class="badge px-2.5 py-1.5 fw-semibold" [ngClass]="getRoleBadgeClass()">
-                {{ currentUserRole }}
+          <!-- Header Right Profile Controls -->
+          <div class="d-flex align-items-center gap-2 gap-sm-3">
+            <!-- Role Badge -->
+            <span class="badge px-2.5 py-1.5 fw-semibold d-none d-sm-inline-block" [ngClass]="getRoleBadgeClass()">
+              {{ currentUserRole }}
+            </span>
+
+            <!-- User Profile Chip -->
+            <div class="user-header-chip">
+              <span class="trainer-avatar" style="width: 26px; height: 26px; font-size: 11px;">
+                {{ getUserInitial() }}
               </span>
-
-              <!-- User Profile Chip -->
-              <div class="d-flex align-items-center gap-2 px-2.5 py-1 bg-light rounded-pill border">
-                <span class="trainer-avatar" style="width: 26px; height: 26px; font-size: 11px;">
-                  {{ getUserInitial() }}
-                </span>
-                <span class="fw-semibold text-dark small">{{ currentUserName }}</span>
-              </div>
-
-              <!-- Quick Mailbox Icon -->
-              <a [routerLink]="getMailRoute()" class="btn btn-sm btn-outline-secondary border-0 px-2 text-secondary" title="Internal Mailbox">
-                <i class="bi bi-envelope fs-5"></i>
-              </a>
-
-              <!-- Sign Out Button -->
-              <button class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1.5 px-3 py-1" (click)="onLogout()" title="Sign Out">
-                <i class="bi bi-box-arrow-right"></i>
-                <span>Sign Out</span>
-              </button>
+              <span class="fw-semibold text-dark small d-none d-sm-inline">{{ currentUserName }}</span>
             </div>
-          </header>
 
-          <main class="main-content">
-            <router-outlet></router-outlet>
-          </main>
-        </div>
+            <!-- Mailbox Icon -->
+            <a [routerLink]="getMailRoute()" class="btn btn-sm btn-outline-secondary border-0 px-2 text-secondary" title="Internal Mailbox">
+              <i class="bi bi-envelope fs-5"></i>
+            </a>
+
+            <!-- Sign Out Button -->
+            <button class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1.5 px-2.5 px-sm-3 py-1" (click)="onLogout()" title="Sign Out">
+              <i class="bi bi-box-arrow-right"></i>
+              <span class="d-none d-sm-inline">Sign Out</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Only Main Content Scrolls (Sidebar & Header remain anchored permanently) -->
+        <main class="main-content">
+          <router-outlet></router-outlet>
+        </main>
       </div>
     </div>
   `
@@ -95,6 +94,7 @@ import { AuthService } from './services/auth.service';
 export class AppComponent {
   isAuthPage: boolean = true;
   sidebarOpen: boolean = false;
+  sidebarCollapsed: boolean = false;
   currentUserRole: string = '';
   currentUserName: string = '';
 
@@ -106,6 +106,14 @@ export class AppComponent {
       this.sidebarOpen = false;
       this.syncUserInfo();
     });
+  }
+
+  toggleSidebar(): void {
+    if (window.innerWidth < 992) {
+      this.sidebarOpen = !this.sidebarOpen;
+    } else {
+      this.sidebarCollapsed = !this.sidebarCollapsed;
+    }
   }
 
   syncUserInfo(): void {

@@ -10,29 +10,29 @@ import { Subscription } from 'rxjs';
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <aside class="sidebar" [class.show]="isOpen">
+    <aside class="sidebar" [class.show]="isOpen" [class.collapsed]="isCollapsed">
       <div class="sidebar-brand d-flex justify-content-between align-items-center">
-        <div>
-          <div class="d-flex align-items-center gap-2">
+        <div class="d-flex flex-column">
+          <div class="sidebar-brand-title">
             <i class="bi bi-mortarboard-fill"></i>
-            <span>TRAINMATE</span>
+            <span class="sidebar-text">TRAINMATE</span>
           </div>
-          <span class="cognizant-badge mt-1 d-inline-block">Cognizant Academy</span>
+          <span class="cognizant-badge">Cognizant Academy</span>
         </div>
-        <button class="btn btn-sm btn-outline-light border-0 d-lg-none" (click)="linkClicked.emit()">
+        <button class="btn btn-sm btn-outline-light border-0 d-lg-none" (click)="linkClicked.emit()" title="Close menu">
           <i class="bi bi-x-lg"></i>
         </button>
       </div>
 
       <!-- User Profile Badge -->
       <div class="px-3 pt-3">
-        <div class="user-profile-badge" *ngIf="user">
+        <div class="user-profile-badge" *ngIf="user" [title]="user.name + ' (' + user.role + ')'">
           <div class="user-avatar">
             {{ user.name.charAt(0) }}
           </div>
           <div class="user-info">
             <div class="user-name">{{ user.name }}</div>
-            <div class="user-role">{{ user.role }}</div>
+            <div class="user-role-badge">{{ user.role }}</div>
           </div>
         </div>
       </div>
@@ -42,25 +42,25 @@ import { Subscription } from 'rxjs';
         <!-- COACH NAV -->
         <ng-container *ngIf="role === 'COACH'">
           <li class="nav-item">
-            <a class="nav-link" routerLink="/coach/dashboard" routerLinkActive="active" (click)="linkClicked.emit()">
+            <a class="nav-link" routerLink="/coach/dashboard" routerLinkActive="active" (click)="linkClicked.emit()" title="Dashboard">
               <i class="bi bi-grid-1x2-fill"></i>
               <span>Dashboard</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" routerLink="/coach/upload" routerLinkActive="active" (click)="linkClicked.emit()">
+            <a class="nav-link" routerLink="/coach/upload" routerLinkActive="active" (click)="linkClicked.emit()" title="Add Cohort">
               <i class="bi bi-plus-circle-fill"></i>
               <span>Add Cohort</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" routerLink="/coach/cohorts" routerLinkActive="active" (click)="linkClicked.emit()">
+            <a class="nav-link" routerLink="/coach/cohorts" routerLinkActive="active" (click)="linkClicked.emit()" title="My Cohorts">
               <i class="bi bi-collection-fill"></i>
               <span>My Cohorts</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" routerLink="/coach/mail" routerLinkActive="active" (click)="linkClicked.emit()">
+            <a class="nav-link" routerLink="/coach/mail" routerLinkActive="active" (click)="linkClicked.emit()" title="Internal Mailbox">
               <i class="bi bi-envelope-fill"></i>
               <span>Mail</span>
             </a>
@@ -70,19 +70,19 @@ import { Subscription } from 'rxjs';
         <!-- TRAINER NAV -->
         <ng-container *ngIf="role === 'TRAINER'">
           <li class="nav-item">
-            <a class="nav-link" routerLink="/trainer/dashboard" routerLinkActive="active" (click)="linkClicked.emit()">
+            <a class="nav-link" routerLink="/trainer/dashboard" routerLinkActive="active" (click)="linkClicked.emit()" title="Dashboard">
               <i class="bi bi-grid-1x2-fill"></i>
               <span>Dashboard</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" routerLink="/trainer/cohorts" routerLinkActive="active" (click)="linkClicked.emit()">
+            <a class="nav-link" routerLink="/trainer/cohorts" routerLinkActive="active" (click)="linkClicked.emit()" title="My Cohorts">
               <i class="bi bi-calendar-check-fill"></i>
               <span>My Cohorts</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" routerLink="/trainer/mail" routerLinkActive="active" (click)="linkClicked.emit()">
+            <a class="nav-link" routerLink="/trainer/mail" routerLinkActive="active" (click)="linkClicked.emit()" title="Internal Mailbox">
               <i class="bi bi-envelope-fill"></i>
               <span>Mail</span>
             </a>
@@ -92,25 +92,25 @@ import { Subscription } from 'rxjs';
         <!-- ADMIN NAV -->
         <ng-container *ngIf="role === 'ADMIN'">
           <li class="nav-item">
-            <a class="nav-link" routerLink="/admin/dashboard" routerLinkActive="active" (click)="linkClicked.emit()">
+            <a class="nav-link" routerLink="/admin/dashboard" routerLinkActive="active" (click)="linkClicked.emit()" title="Dashboard">
               <i class="bi bi-grid-1x2-fill"></i>
               <span>Dashboard</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" routerLink="/admin/cohorts" routerLinkActive="active" (click)="linkClicked.emit()">
+            <a class="nav-link" routerLink="/admin/cohorts" routerLinkActive="active" (click)="linkClicked.emit()" title="All Cohorts">
               <i class="bi bi-diagram-3-fill"></i>
               <span>All Cohorts</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" routerLink="/admin/trainers" routerLinkActive="active" (click)="linkClicked.emit()">
+            <a class="nav-link" routerLink="/admin/trainers" routerLinkActive="active" (click)="linkClicked.emit()" title="Trainers Directory">
               <i class="bi bi-people-fill"></i>
               <span>Trainers</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" routerLink="/admin/mail" routerLinkActive="active" (click)="linkClicked.emit()">
+            <a class="nav-link" routerLink="/admin/mail" routerLinkActive="active" (click)="linkClicked.emit()" title="Internal Mailbox">
               <i class="bi bi-envelope-fill"></i>
               <span>Mail</span>
             </a>
@@ -120,7 +120,7 @@ import { Subscription } from 'rxjs';
 
       <!-- Logout button with Confirmation -->
       <div class="sidebar-footer">
-        <button class="nav-link w-100 border-0 bg-transparent text-start text-danger" (click)="confirmLogout()">
+        <button class="nav-link w-100 border-0 bg-transparent text-start text-danger" (click)="confirmLogout()" title="Logout">
           <i class="bi bi-box-arrow-right"></i>
           <span>Logout</span>
         </button>
@@ -128,18 +128,18 @@ import { Subscription } from 'rxjs';
     </aside>
 
     <!-- Logout Confirmation Modal -->
-    <div class="modal-overlay" *ngIf="showLogoutModal">
-      <div class="modal-card" style="max-width: 400px;">
-        <div class="modal-header">
-          <h5 class="modal-title fs-5 fw-bold mb-0">Confirm Logout</h5>
-          <button type="button" class="btn-close" (click)="showLogoutModal = false"></button>
-        </div>
-        <div class="modal-body">
-          <p class="text-secondary mb-0">Are you sure you want to log out of TrainMate?</p>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-sm btn-secondary-custom" (click)="showLogoutModal = false">Cancel</button>
-          <button class="btn btn-sm btn-danger" (click)="executeLogout()">Logout</button>
+    <div class="modal-overlay" *ngIf="showLogoutModal" (click)="showLogoutModal = false">
+      <div class="modal-card modal-sm" (click)="$event.stopPropagation()">
+        <div class="modal-body p-4 text-center">
+          <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger mb-3" style="width: 52px; height: 52px; font-size: 22px;">
+            <i class="bi bi-box-arrow-right"></i>
+          </div>
+          <h5 class="modal-title fw-bold text-dark mb-2">Confirm Sign Out</h5>
+          <p class="text-muted small mb-4">Are you sure you want to end your current session?</p>
+          <div class="d-flex justify-content-center gap-2">
+            <button type="button" class="btn btn-secondary-custom px-4" (click)="showLogoutModal = false">Cancel</button>
+            <button type="button" class="btn btn-danger px-4" (click)="executeLogout()">Sign Out</button>
+          </div>
         </div>
       </div>
     </div>
@@ -147,12 +147,13 @@ import { Subscription } from 'rxjs';
 })
 export class SidebarComponent implements OnInit, OnDestroy {
   @Input() isOpen: boolean = false;
+  @Input() isCollapsed: boolean = false;
   @Output() linkClicked = new EventEmitter<void>();
 
   user: User | null = null;
-  role: UserRole | null = null;
+  role: string = '';
   showLogoutModal: boolean = false;
-  private sub?: Subscription;
+  private authSub: Subscription | null = null;
 
   constructor(
     private authService: AuthService,
@@ -160,10 +161,16 @@ export class SidebarComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.sub = this.authService.currentUser$.subscribe((u: User | null) => {
-      this.user = u;
-      this.role = u?.role || null;
+    this.authSub = this.authService.currentUser$.subscribe((user: User | null) => {
+      this.user = user;
+      this.role = user ? user.role : '';
     });
+  }
+
+  ngOnDestroy(): void {
+    if (this.authSub) {
+      this.authSub.unsubscribe();
+    }
   }
 
   confirmLogout(): void {
@@ -174,9 +181,5 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.showLogoutModal = false;
     this.authService.logout();
     this.router.navigate(['/login']);
-  }
-
-  ngOnDestroy(): void {
-    this.sub?.unsubscribe();
   }
 }
