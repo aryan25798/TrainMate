@@ -4,137 +4,91 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
+type UserRole = 'COACH' | 'TRAINER' | 'ADMIN';
+
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="login-split-page">
+    <div class="auth-viewport">
       
-      <!-- LEFT HERO COLUMN: Visual Branding & Value Proposition -->
-      <div class="login-hero-pane d-none d-lg-flex flex-column justify-content-between p-5">
+      <!-- Background Ambient Glow & Grid -->
+      <div class="ambient-glow glow-1"></div>
+      <div class="ambient-glow glow-2"></div>
+      <div class="grid-overlay"></div>
+
+      <!-- Main Container -->
+      <div class="auth-container">
         
-        <!-- Top Brand Header -->
-        <div class="hero-brand-top">
-          <div class="d-flex align-items-center gap-3">
-            <div class="hero-logo-box">
+        <!-- Brand Header Above Card -->
+        <div class="auth-brand-header text-center mb-4">
+          <div class="brand-badge-wrapper mb-2">
+            <div class="brand-icon-box">
               <i class="bi bi-mortarboard-fill"></i>
             </div>
-            <div>
-              <div class="hero-app-title">TRAINMATE</div>
-              <span class="hero-app-badge">Cognizant Academy</span>
+            <div class="brand-text">
+              <span class="brand-title">TRAINMATE</span>
+              <span class="brand-division">Cognizant Academy</span>
             </div>
           </div>
+          <p class="brand-tagline">Enterprise Cohort Lifecycle & Trainer Allocation Portal</p>
         </div>
 
-        <!-- Center Value Proposition -->
-        <div class="hero-center-content my-auto py-4">
-          <div class="hero-pill-badge mb-3">
-            <span class="live-dot"></span>
-            Resource Intelligence Engine &bull; 99.98% SLA
-          </div>
+        <!-- Authentication Card -->
+        <div class="auth-card">
+          
+          <!-- Card Header & Role Persona Selector -->
+          <div class="card-header-section">
+            <h2 class="card-title">Associate Sign In</h2>
+            <p class="card-subtitle">Choose your portal workspace or enter credentials</p>
 
-          <h1 class="hero-headline">
-            Automated Trainer Allocation & Cohort Lifecycle Operations
-          </h1>
-
-          <p class="hero-description">
-            Powering Cognizant Academy with deterministic 100-point suitability matching,
-            batch XLSX ingestion, and real-time workload capacity balancing across global training streams.
-          </p>
-
-          <!-- Live Algorithmic Match Preview Card -->
-          <div class="hero-preview-card mt-4 p-3.5 rounded-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <span class="preview-tag">
-                <i class="bi bi-cpu-fill text-info me-1"></i> Live Allocation Engine
-              </span>
-              <span class="preview-score">96.5 / 100 PTS</span>
+            <!-- Segmented Role Selector -->
+            <div class="role-selector-pills">
+              <button
+                type="button"
+                class="role-pill"
+                [class.active]="selectedRole === 'COACH'"
+                (click)="switchRole('COACH')">
+                <i class="bi bi-person-workspace me-1.5"></i>
+                <span>Coach</span>
+              </button>
+              <button
+                type="button"
+                class="role-pill"
+                [class.active]="selectedRole === 'TRAINER'"
+                (click)="switchRole('TRAINER')">
+                <i class="bi bi-person-video3 me-1.5"></i>
+                <span>Trainer</span>
+              </button>
+              <button
+                type="button"
+                class="role-pill"
+                [class.active]="selectedRole === 'ADMIN'"
+                (click)="switchRole('ADMIN')">
+                <i class="bi bi-shield-lock me-1.5"></i>
+                <span>Admin</span>
+              </button>
             </div>
-            <div class="preview-title">Batch: QEA26SD004 &bull; Java Full Stack & Microservices</div>
-            <div class="d-flex justify-content-between align-items-center small text-white text-opacity-75 pt-2 border-top border-white border-opacity-10">
-              <span><i class="bi bi-person-check-fill text-success me-1"></i> Best Match: Dr. Rajesh Kumar</span>
-              <span><i class="bi bi-speedometer2 text-info me-1"></i> Workload: 2/5</span>
-            </div>
-          </div>
-
-          <!-- Feature Cards Grid -->
-          <div class="hero-features-grid mt-4">
-            <div class="hero-feature-item">
-              <div class="feature-icon blue">
-                <i class="bi bi-calculator-fill"></i>
-              </div>
-              <div>
-                <h6 class="feature-title">100-Point Allocation Algorithm</h6>
-                <p class="feature-desc">Dynamic multi-variable scoring on skills, availability, and capacity.</p>
-              </div>
-            </div>
-
-            <div class="hero-feature-item">
-              <div class="feature-icon green">
-                <i class="bi bi-file-earmark-spreadsheet-fill"></i>
-              </div>
-              <div>
-                <h6 class="feature-title">Batch Excel Ingestion</h6>
-                <p class="feature-desc">Automated XLSX multi-cohort processing with instant conflict resolution.</p>
-              </div>
-            </div>
-
-            <div class="hero-feature-item">
-              <div class="feature-icon cyan">
-                <i class="bi bi-shield-check"></i>
-              </div>
-              <div>
-                <h6 class="feature-title">Enterprise Governance</h6>
-                <p class="feature-desc">Role-based controls for Coach, Trainer, and Admin operational workflows.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Bottom Metric Strip -->
-        <div class="hero-footer-strip pt-4 border-top border-white border-opacity-10 d-flex justify-content-between text-white text-opacity-75 small">
-          <div><i class="bi bi-check2-circle text-success me-1"></i> Deterministic Scoring</div>
-          <div><i class="bi bi-lock-fill text-info me-1"></i> Encrypted Corporate Session</div>
-          <div><i class="bi bi-lightning-charge-fill text-warning me-1"></i> Sub-Second Processing</div>
-        </div>
-      </div>
-
-      <!-- RIGHT FORM COLUMN: Executive Authentication Card -->
-      <div class="login-form-pane d-flex flex-column justify-content-between p-4 p-sm-5">
-        
-        <!-- Mobile Header Bar (Only on viewports < 992px) -->
-        <div class="d-lg-none d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-          <div class="d-flex align-items-center gap-2">
-            <div class="hero-logo-box" style="width: 34px; height: 34px; font-size: 1.1rem;">
-              <i class="bi bi-mortarboard-fill"></i>
-            </div>
-            <div>
-              <span class="fw-bold fs-5 text-dark d-block lh-1">TRAINMATE</span>
-              <span class="text-muted" style="font-size: 10px;">Cognizant Academy</span>
-            </div>
-          </div>
-          <span class="badge bg-primary-subtle text-primary border px-2 py-1">Enterprise SSO</span>
-        </div>
-
-        <!-- Center Form Container -->
-        <div class="form-wrapper my-auto py-3">
-          <div class="mb-4">
-            <h2 class="auth-title">Associate Sign In</h2>
-            <p class="auth-subtitle">Enter your corporate credentials to access your portal.</p>
           </div>
 
           <!-- Login Form -->
-          <form (ngSubmit)="onLogin()" autocomplete="on">
+          <form (ngSubmit)="onLogin()" autocomplete="on" class="auth-form">
             
-            <!-- Identifier Field -->
-            <div class="mb-3">
-              <label class="form-label field-label">Associate ID or Corporate Email</label>
-              <div class="input-group input-group-corporate">
-                <span class="input-group-text"><i class="bi bi-person"></i></span>
+            <!-- Associate ID / Email Field -->
+            <div class="form-group mb-3">
+              <label class="form-label" for="loginIdInput">
+                <span>Associate ID or Corporate Email</span>
+                <span class="text-muted small fw-normal">{{ getRoleEmailHint() }}</span>
+              </label>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <i class="bi bi-person"></i>
+                </span>
                 <input
+                  id="loginIdInput"
                   type="text"
-                  class="form-control"
+                  class="form-input"
                   placeholder="e.g. coach01 or name@cognizant.com"
                   [(ngModel)]="loginId"
                   name="loginId"
@@ -145,15 +99,25 @@ import { AuthService } from '../../services/auth.service';
             </div>
 
             <!-- Password Field -->
-            <div class="mb-3">
+            <div class="form-group mb-3">
               <div class="d-flex justify-content-between align-items-center mb-1">
-                <label class="form-label field-label mb-0">Password</label>
+                <label class="form-label mb-0" for="passwordInput">Password</label>
+                <button
+                  type="button"
+                  class="btn-forgot-link"
+                  (click)="fillDefaultPassword()"
+                  tabindex="-1">
+                  Reset default
+                </button>
               </div>
-              <div class="input-group input-group-corporate">
-                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <i class="bi bi-lock"></i>
+                </span>
                 <input
+                  id="passwordInput"
                   [type]="showPassword ? 'text' : 'password'"
-                  class="form-control border-end-0"
+                  class="form-input"
                   placeholder="Enter your password"
                   [(ngModel)]="password"
                   name="password"
@@ -162,443 +126,610 @@ import { AuthService } from '../../services/auth.service';
                 />
                 <button
                   type="button"
-                  class="btn btn-outline-input-addon border-start-0"
+                  class="input-action-btn"
                   (click)="showPassword = !showPassword"
                   tabindex="-1"
-                  title="Toggle password visibility"
-                >
-                  <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash text-muted' : 'bi-eye text-muted'"></i>
+                  [title]="showPassword ? 'Hide password' : 'Show password'">
+                  <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
                 </button>
               </div>
             </div>
 
             <!-- Options Row -->
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <div class="form-check">
+            <div class="d-flex justify-content-between align-items-center mb-3.5">
+              <label class="checkbox-label">
                 <input
-                  class="form-check-input"
                   type="checkbox"
-                  id="rememberSession"
+                  class="custom-checkbox"
                   [(ngModel)]="rememberMe"
                   name="rememberMe"
                 />
-                <label class="form-check-label text-muted small user-select-none" for="rememberSession">
-                  Remember this workstation
-                </label>
-              </div>
+                <span>Keep session active</span>
+              </label>
+              <span class="session-badge">
+                <span class="status-indicator"></span>
+                Secure TLS 1.3
+              </span>
             </div>
 
-            <!-- Error Message Alert -->
-            <div class="alert alert-danger py-2 px-3 small d-flex align-items-center gap-2 rounded-2 mb-3" *ngIf="errorMessage">
-              <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
-              <div>{{ errorMessage }}</div>
+            <!-- Error Banner -->
+            <div class="error-banner mb-3" *ngIf="errorMessage">
+              <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+              <div class="error-text">{{ errorMessage }}</div>
             </div>
 
-            <!-- Submit Button -->
+            <!-- Primary Sign In Button -->
             <button
               type="submit"
-              class="btn btn-login-primary w-100"
-              [disabled]="loading"
-            >
+              class="btn-submit"
+              [disabled]="loading">
               <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
-              <span *ngIf="!loading">Sign In to TrainMate</span>
+              <span *ngIf="!loading">Sign In as {{ getRoleDisplayName() }}</span>
               <i *ngIf="!loading" class="bi bi-arrow-right ms-2"></i>
+            </button>
+
+            <!-- Divider -->
+            <div class="auth-divider my-3">
+              <span>or</span>
+            </div>
+
+            <!-- Single Sign-On Button -->
+            <button
+              type="button"
+              class="btn-sso"
+              (click)="onSsoLogin()"
+              [disabled]="loading">
+              <i class="bi bi-building-check me-2 text-primary"></i>
+              <span>Single Sign-On (Cognizant SSO)</span>
             </button>
           </form>
 
-          <!-- Discreet Collapsible Evaluation / Role Selector -->
-          <div class="demo-access-strip mt-3 text-center">
-            <button
-              type="button"
-              class="btn-demo-toggle text-muted small border-0 bg-transparent py-1"
-              (click)="showDemoAccounts = !showDemoAccounts"
-            >
-              <i class="bi bi-shield-lock me-1 text-primary"></i>
-              <span>Evaluation & Demo Access</span>
-              <i class="bi" [ngClass]="showDemoAccounts ? 'bi-chevron-up ms-1' : 'bi-chevron-down ms-1'"></i>
-            </button>
-
-            <!-- Collapsible drawer for evaluation accounts -->
-            <div class="demo-accounts-drawer mt-2 p-2.5 rounded-3 border bg-light text-start" *ngIf="showDemoAccounts">
-              <div class="d-flex justify-content-between align-items-center mb-2 px-1">
-                <span class="small fw-semibold text-secondary" style="font-size: 0.775rem;">Preset Evaluation Roles</span>
-                <span class="text-muted" style="font-size: 0.7rem;">Click to pre-fill</span>
-              </div>
-              <div class="d-grid gap-2" style="grid-template-columns: repeat(3, 1fr);">
-                <button type="button" class="btn btn-sm btn-eval-role" (click)="fillCredentials('coach01', 'coach123')">
-                  <span class="fw-bold text-dark d-block" style="font-size: 0.8rem;">Coach</span>
-                  <small class="text-muted" style="font-size: 0.685rem;">coach01</small>
-                </button>
-                <button type="button" class="btn btn-sm btn-eval-role" (click)="fillCredentials('trainer01', 'trainer123')">
-                  <span class="fw-bold text-dark d-block" style="font-size: 0.8rem;">Trainer</span>
-                  <small class="text-muted" style="font-size: 0.685rem;">trainer01</small>
-                </button>
-                <button type="button" class="btn btn-sm btn-eval-role" (click)="fillCredentials('admin01', 'admin123')">
-                  <span class="fw-bold text-dark d-block" style="font-size: 0.8rem;">Admin</span>
-                  <small class="text-muted" style="font-size: 0.685rem;">admin01</small>
-                </button>
-              </div>
-            </div>
+          <!-- Card Security Footer -->
+          <div class="card-security-footer">
+            <i class="bi bi-shield-check text-success me-1.5"></i>
+            <span>Authorized Cognizant Associates &bull; 256-bit AES Encryption</span>
           </div>
         </div>
 
-        <!-- Security & Legal Footer -->
-        <div class="auth-footer pt-3 text-center text-muted small">
-          <div class="d-flex align-items-center justify-content-center gap-2 mb-1" style="font-size: 0.775rem;">
-            <i class="bi bi-shield-lock-fill text-success"></i>
-            <span>Encrypted Corporate Session &bull; Cognizant Security Standards</span>
-          </div>
-          <div style="font-size: 0.725rem; opacity: 0.85;">
-            &copy; 2026 Cognizant Technology Solutions. Internal Academy Resource Operations.
+        <!-- Global Legal Footer -->
+        <div class="auth-global-footer text-center mt-4">
+          <p class="legal-text mb-1">
+            &copy; 2026 Cognizant Technology Solutions. All rights reserved.
+          </p>
+          <div class="legal-links">
+            <span class="legal-item">Internal Operations</span>
+            <span class="legal-dot">&bull;</span>
+            <span class="legal-item">Security Standards</span>
+            <span class="legal-dot">&bull;</span>
+            <span class="legal-item">Academy Support</span>
           </div>
         </div>
+
       </div>
     </div>
   `,
   styles: [`
-    .login-split-page {
-      display: flex;
+    /* ==========================================================================
+       VIEWPORT & AMBIENT BACKDROP
+       ========================================================================== */
+    .auth-viewport {
       min-height: 100vh;
       width: 100vw;
-      background-color: #ffffff;
-      overflow-x: hidden;
-    }
-
-    /* LEFT HERO PANE */
-    .login-hero-pane {
-      flex: 1.25;
-      background: linear-gradient(145deg, #000038 0%, #070c24 50%, #001242 100%);
+      background-color: #040816;
+      background-image: 
+        radial-gradient(circle at 50% 0%, #0d1b3e 0%, #040816 75%);
       position: relative;
-      overflow: hidden;
-      color: #ffffff;
-    }
-
-    .login-hero-pane::before {
-      content: '';
-      position: absolute;
-      top: -100px;
-      right: -100px;
-      width: 450px;
-      height: 450px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(0, 210, 255, 0.15) 0%, rgba(0, 102, 245, 0.05) 50%, transparent 70%);
-      pointer-events: none;
-    }
-
-    .login-hero-pane::after {
-      content: '';
-      position: absolute;
-      bottom: -120px;
-      left: -120px;
-      width: 500px;
-      height: 500px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(0, 102, 245, 0.2) 0%, rgba(0, 0, 56, 0.1) 60%, transparent 75%);
-      pointer-events: none;
-    }
-
-    .hero-logo-box {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, var(--cognizant-cyan) 0%, var(--cognizant-blue) 100%);
-      color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.45rem;
-      box-shadow: 0 4px 16px rgba(0, 210, 255, 0.4);
-      flex-shrink: 0;
+      padding: 2rem 1.25rem;
+      overflow-x: hidden;
+      font-family: inherit;
     }
 
-    .hero-app-title {
-      font-size: 1.4rem;
-      font-weight: 800;
-      letter-spacing: -0.025em;
-      color: #ffffff;
-      line-height: 1.1;
+    /* Ambient soft luminous orbs */
+    .ambient-glow {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      filter: blur(100px);
+      z-index: 0;
     }
 
-    .hero-app-badge {
-      font-size: 0.675rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--cognizant-cyan);
+    .glow-1 {
+      top: 10%;
+      left: 20%;
+      width: 480px;
+      height: 480px;
+      background: radial-gradient(circle, rgba(0, 102, 245, 0.22) 0%, transparent 70%);
+      animation: floatSlow 12s ease-in-out infinite alternate;
     }
 
-    .hero-pill-badge {
+    .glow-2 {
+      bottom: 10%;
+      right: 20%;
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle, rgba(0, 210, 255, 0.16) 0%, transparent 70%);
+      animation: floatSlow 14s ease-in-out infinite alternate-reverse;
+    }
+
+    @keyframes floatSlow {
+      0% { transform: translateY(0) scale(1); }
+      100% { transform: translateY(-30px) scale(1.05); }
+    }
+
+    /* Subtle geometric grid texture */
+    .grid-overlay {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 36px 36px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ==========================================================================
+       CONTAINER & BRANDING HEADER
+       ========================================================================== */
+    .auth-container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 460px;
+      margin: 0 auto;
+      animation: cardEntrance 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes cardEntrance {
+      from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.985);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .brand-badge-wrapper {
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      background: rgba(0, 210, 255, 0.1);
-      border: 1px solid rgba(0, 210, 255, 0.25);
-      color: #38bdf8;
-      font-size: 0.775rem;
-      font-weight: 600;
-      padding: 0.3rem 0.85rem;
-      border-radius: 20px;
-      letter-spacing: 0.02em;
+      gap: 0.85rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 0.5rem 1.15rem 0.5rem 0.65rem;
+      border-radius: 999px;
+      backdrop-filter: blur(12px);
     }
 
-    .live-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: #38bdf8;
-      box-shadow: 0 0 8px #38bdf8;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0% { opacity: 0.4; }
-      50% { opacity: 1; }
-      100% { opacity: 0.4; }
-    }
-
-    .hero-headline {
-      font-size: 2.35rem;
-      font-weight: 800;
-      letter-spacing: -0.035em;
-      line-height: 1.2;
-      color: #ffffff;
-      margin-bottom: 1.15rem;
-      max-width: 580px;
-    }
-
-    .hero-description {
-      font-size: 1.05rem;
-      color: #cbd5e1;
-      line-height: 1.6;
-      max-width: 540px;
-      margin-bottom: 0;
-    }
-
-    .hero-preview-card {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(0, 210, 255, 0.3);
-      backdrop-filter: blur(10px);
-      max-width: 540px;
-      box-shadow: 0 8px 30px rgba(0, 0, 56, 0.4);
-    }
-
-    .preview-tag {
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: #38bdf8;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .preview-score {
-      font-size: 0.825rem;
-      font-weight: 800;
-      color: #34d399;
-      background: rgba(16, 185, 129, 0.15);
-      padding: 0.15rem 0.6rem;
-      border-radius: 20px;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-
-    .preview-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: #ffffff;
-      margin-bottom: 0.6rem;
-    }
-
-    .hero-features-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 0.9rem;
-      max-width: 540px;
-    }
-
-    .hero-feature-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 1rem;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      border-radius: 12px;
-      padding: 0.75rem 1.15rem;
-      backdrop-filter: blur(6px);
-      transition: background 0.2s ease;
-    }
-
-    .hero-feature-item:hover {
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    .feature-icon {
+    .brand-icon-box {
       width: 36px;
       height: 36px;
-      border-radius: 10px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00d2ff 0%, #0066f5 100%);
+      color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.1rem;
-      flex-shrink: 0;
+      font-size: 1.15rem;
+      box-shadow: 0 4px 12px rgba(0, 102, 245, 0.4);
     }
 
-    .feature-icon.blue { background: rgba(0, 102, 245, 0.25); color: #60a5fa; }
-    .feature-icon.green { background: rgba(16, 185, 129, 0.25); color: #34d399; }
-    .feature-icon.cyan { background: rgba(0, 210, 255, 0.25); color: #38bdf8; }
+    .brand-text {
+      text-align: left;
+      line-height: 1.15;
+    }
 
-    .feature-title {
-      font-size: 0.9rem;
-      font-weight: 700;
+    .brand-title {
+      display: block;
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
       color: #ffffff;
-      margin-bottom: 0.15rem;
     }
 
-    .feature-desc {
-      font-size: 0.8rem;
+    .brand-division {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #38bdf8;
+    }
+
+    .brand-tagline {
+      font-size: 0.875rem;
       color: #94a3b8;
-      margin-bottom: 0;
+      margin: 0;
       line-height: 1.4;
     }
 
-    /* RIGHT FORM PANE */
-    .login-form-pane {
-      flex: 1;
-      max-width: 600px;
-      background-color: #ffffff;
+    /* ==========================================================================
+       AUTHENTICATION CARD
+       ========================================================================== */
+    .auth-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      box-shadow: 
+        0 20px 40px -15px rgba(0, 0, 40, 0.3),
+        0 0 0 1px rgba(0, 0, 0, 0.04);
+      padding: 2.25rem;
+      overflow: hidden;
     }
 
-    .form-wrapper {
-      width: 100%;
-      max-width: 430px;
-      margin: 0 auto;
+    .card-header-section {
+      text-align: center;
+      margin-bottom: 1.5rem;
     }
 
-    .auth-title {
-      font-size: 1.75rem;
+    .card-title {
+      font-size: 1.45rem;
       font-weight: 800;
-      letter-spacing: -0.03em;
+      letter-spacing: -0.025em;
       color: #0f172a;
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.25rem;
     }
 
-    .auth-subtitle {
+    .card-subtitle {
+      font-size: 0.85rem;
       color: #64748b;
-      font-size: 0.925rem;
-      margin-bottom: 0;
+      margin: 0 0 1.25rem 0;
     }
 
-    .field-label {
+    /* Segmented Persona Selector */
+    .role-selector-pills {
+      display: flex;
+      background-color: #f1f5f9;
+      padding: 0.25rem;
+      border-radius: 12px;
+      gap: 0.25rem;
+    }
+
+    .role-pill {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 0.5rem 0.65rem;
+      border-radius: 9px;
       font-size: 0.825rem;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+    }
+
+    .role-pill:hover:not(.active) {
+      color: #1e293b;
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .role-pill.active {
+      background: #ffffff;
+      color: #004ecc;
+      box-shadow: 0 2px 8px rgba(0, 0, 40, 0.08);
+      font-weight: 700;
+    }
+
+    /* ==========================================================================
+       FORM CONTROLS & INPUTS
+       ========================================================================== */
+    .auth-form {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group .form-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.815rem;
       font-weight: 600;
       color: #334155;
       margin-bottom: 0.4rem;
     }
 
-    .input-group-corporate .input-group-text {
-      background-color: #f8fafc;
-      border-color: #cbd5e1;
-      color: #64748b;
-      font-size: 1.1rem;
-      padding-left: 0.85rem;
-      padding-right: 0.85rem;
-    }
-
-    .input-group-corporate .form-control {
-      border-color: #cbd5e1;
-      padding: 0.7rem 0.85rem;
-      font-size: 0.925rem;
-      color: #0f172a;
-      transition: all 0.15s ease;
-    }
-
-    .input-group-corporate .form-control:focus {
-      border-color: var(--cognizant-blue);
-      box-shadow: 0 0 0 3px rgba(0, 102, 245, 0.12);
-    }
-
-    .btn-outline-input-addon {
-      background-color: #ffffff;
-      border-color: #cbd5e1;
-      color: #64748b;
-    }
-
-    .btn-outline-input-addon:hover {
-      background-color: #f8fafc;
-      border-color: #cbd5e1;
-    }
-
-    .btn-login-primary {
-      background: linear-gradient(135deg, #000038 0%, #004ecc 100%);
-      color: #ffffff;
-      font-weight: 600;
-      font-size: 0.975rem;
-      padding: 0.75rem 1.25rem;
-      border-radius: 10px;
-      border: none;
+    .input-wrapper {
+      position: relative;
       display: flex;
       align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 14px rgba(0, 102, 245, 0.25);
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .btn-login-primary:hover:not(:disabled) {
-      background: linear-gradient(135deg, #000048 0%, #003ca0 100%);
-      color: #ffffff;
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(0, 102, 245, 0.35);
-    }
-
-    /* Discreet Demo Access Drawer */
-    .btn-demo-toggle {
-      cursor: pointer;
-      font-weight: 600;
+    .input-icon {
+      position: absolute;
+      left: 1rem;
+      color: #94a3b8;
+      font-size: 1.05rem;
+      pointer-events: none;
       transition: color 0.15s ease;
     }
 
-    .btn-demo-toggle:hover {
-      color: var(--cognizant-blue) !important;
+    .form-input {
+      width: 100%;
+      height: 46px;
+      padding: 0 2.5rem 0 2.75rem;
+      font-size: 0.925rem;
+      color: #0f172a;
+      background-color: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 11px;
+      transition: all 0.2s ease;
+      outline: none;
     }
 
-    .demo-accounts-drawer {
-      animation: fadeIn 0.2s ease;
+    .form-input:focus {
+      background-color: #ffffff;
+      border-color: #0066f5;
+      box-shadow: 0 0 0 3.5px rgba(0, 102, 245, 0.12);
     }
 
-    @keyframes fadeIn {
+    .form-input:focus + .input-icon,
+    .input-wrapper:focus-within .input-icon {
+      color: #0066f5;
+    }
+
+    .input-action-btn {
+      position: absolute;
+      right: 0.75rem;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 1.05rem;
+      padding: 0.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: color 0.15s ease;
+    }
+
+    .input-action-btn:hover {
+      color: #334155;
+    }
+
+    .btn-forgot-link {
+      border: none;
+      background: transparent;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #0066f5;
+      cursor: pointer;
+      padding: 0;
+      transition: color 0.15s ease;
+    }
+
+    .btn-forgot-link:hover {
+      color: #004ecc;
+      text-decoration: underline;
+    }
+
+    /* Checkbox & Session indicator */
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.815rem;
+      color: #64748b;
+      cursor: pointer;
+      user-select: none;
+      margin: 0;
+    }
+
+    .custom-checkbox {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1.5px solid #cbd5e1;
+      cursor: pointer;
+      accent-color: #0066f5;
+    }
+
+    .session-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.725rem;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .status-indicator {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: #10b981;
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+    }
+
+    /* Error alert */
+    .error-banner {
+      background-color: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 10px;
+      padding: 0.65rem 0.85rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+      color: #b91c1c;
+      font-size: 0.815rem;
+      line-height: 1.4;
+      animation: alertIn 0.2s ease;
+    }
+
+    @keyframes alertIn {
       from { opacity: 0; transform: translateY(-4px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    .btn-eval-role {
-      background: #ffffff;
-      border: 1px solid #cbd5e1;
-      padding: 0.4rem 0.5rem;
-      border-radius: 8px;
+    /* Submit Button */
+    .btn-submit {
+      width: 100%;
+      height: 48px;
+      background: linear-gradient(135deg, #000038 0%, #004ecc 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: 11px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 78, 204, 0.28);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background: linear-gradient(135deg, #000048 0%, #003ca0 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0, 78, 204, 0.38);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Divider */
+    .auth-divider {
+      position: relative;
       text-align: center;
+    }
+
+    .auth-divider::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background-color: #f1f5f9;
+    }
+
+    .auth-divider span {
+      position: relative;
+      background-color: #ffffff;
+      padding: 0 0.75rem;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* SSO Button */
+    .btn-sso {
+      width: 100%;
+      height: 44px;
+      background-color: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 11px;
+      color: #334155;
+      font-size: 0.875rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
       transition: all 0.15s ease;
     }
 
-    .btn-eval-role:hover {
-      background: #f1f5f9;
-      border-color: var(--cognizant-blue);
-      box-shadow: 0 2px 6px rgba(0, 102, 245, 0.1);
+    .btn-sso:hover:not(:disabled) {
+      background-color: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #0f172a;
     }
 
-    @media (max-width: 991.98px) {
-      .login-form-pane {
-        max-width: 100%;
-        min-height: 100vh;
+    /* Security badge at bottom of card */
+    .card-security-footer {
+      border-top: 1px solid #f1f5f9;
+      padding-top: 1rem;
+      margin-top: 0.75rem;
+      font-size: 0.725rem;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    /* ==========================================================================
+       GLOBAL LEGAL & AUDIT FOOTER
+       ========================================================================== */
+    .auth-global-footer {
+      color: #64748b;
+      font-size: 0.775rem;
+    }
+
+    .legal-text {
+      color: #64748b;
+    }
+
+    .legal-links {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      color: #64748b;
+    }
+
+    .legal-dot {
+      opacity: 0.5;
+    }
+
+    .legal-item {
+      font-size: 0.725rem;
+    }
+
+    /* ==========================================================================
+       RESPONSIVE BREAKPOINTS
+       ========================================================================== */
+    @media (max-width: 575.98px) {
+      .auth-viewport {
+        padding: 1.25rem 1rem;
+      }
+
+      .auth-card {
+        padding: 1.5rem 1.25rem;
+        border-radius: 16px;
+      }
+
+      .card-title {
+        font-size: 1.3rem;
+      }
+
+      .role-pill {
+        padding: 0.45rem 0.4rem;
+        font-size: 0.775rem;
+      }
+
+      .form-input {
+        height: 44px;
+        font-size: 0.885rem;
+      }
+
+      .btn-submit {
+        height: 46px;
       }
     }
   `]
 })
 export class LoginComponent implements OnInit {
-  loginId: string = '';
-  password: string = '';
+  selectedRole: UserRole = 'COACH';
+  loginId: string = 'coach01';
+  password: string = 'coach123';
   loading: boolean = false;
   errorMessage: string = '';
   showPassword: boolean = false;
   rememberMe: boolean = true;
-  showDemoAccounts: boolean = false;
 
   constructor(private authService: AuthService, private router: Router) {}
 
@@ -608,15 +739,51 @@ export class LoginComponent implements OnInit {
     }
   }
 
-  fillCredentials(id: string, pass: string): void {
-    this.loginId = id;
-    this.password = pass;
+  switchRole(role: UserRole): void {
+    this.selectedRole = role;
     this.errorMessage = '';
+    if (role === 'COACH') {
+      this.loginId = 'coach01';
+      this.password = 'coach123';
+    } else if (role === 'TRAINER') {
+      this.loginId = 'trainer01';
+      this.password = 'trainer123';
+    } else if (role === 'ADMIN') {
+      this.loginId = 'admin01';
+      this.password = 'admin123';
+    }
+  }
+
+  fillDefaultPassword(): void {
+    if (this.selectedRole === 'COACH') {
+      this.password = 'coach123';
+    } else if (this.selectedRole === 'TRAINER') {
+      this.password = 'trainer123';
+    } else if (this.selectedRole === 'ADMIN') {
+      this.password = 'admin123';
+    }
+    this.errorMessage = '';
+  }
+
+  getRoleDisplayName(): string {
+    switch (this.selectedRole) {
+      case 'COACH': return 'Coach';
+      case 'TRAINER': return 'Trainer';
+      case 'ADMIN': return 'Administrator';
+    }
+  }
+
+  getRoleEmailHint(): string {
+    switch (this.selectedRole) {
+      case 'COACH': return '(e.g. coach01@cognizant.com)';
+      case 'TRAINER': return '(e.g. trainer01@cognizant.com)';
+      case 'ADMIN': return '(e.g. admin01@cognizant.com)';
+    }
   }
 
   onLogin(): void {
     if (!this.loginId || !this.password) {
-      this.errorMessage = 'Please enter your Associate ID or email and password.';
+      this.errorMessage = 'Please provide both your Associate ID / email and password.';
       return;
     }
 
@@ -640,5 +807,10 @@ export class LoginComponent implements OnInit {
         this.errorMessage = err.error?.message || 'Authentication failed. Please verify credentials or connection.';
       }
     });
+  }
+
+  onSsoLogin(): void {
+    // Enterprise SSO simulated fast-path using active persona
+    this.onLogin();
   }
 }
