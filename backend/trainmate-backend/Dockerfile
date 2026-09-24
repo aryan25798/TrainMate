@@ -14,6 +14,8 @@ EXPOSE 10000
 ENTRYPOINT ["java", \
   "-XX:+UseG1GC", \
   "-XX:+UseContainerSupport", \
+  "-XX:+TieredCompilation", \
+  "-XX:TieredStopAtLevel=1", \
   "-Xms128m", "-Xmx512m", \
   "-Djava.security.egd=file:/dev/./urandom", \
   "-jar", "app.jar"]
