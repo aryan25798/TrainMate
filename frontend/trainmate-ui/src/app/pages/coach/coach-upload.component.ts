@@ -557,7 +557,9 @@ export class CoachUploadComponent {
     this.manualError = '';
     this.createdCohortResult = null;
 
-    const coachId = this.authService.currentUserValue?.coachId || 1;
+    const user = this.authService.currentUserValue;
+    const coachId = user?.coachId ?? user?.userId;
+    if (!coachId) { this.isSubmittingManual = false; this.manualError = 'Session expired. Please log in again.'; return; }
 
     this.coachService.createCohort(coachId, this.manualForm).subscribe({
       next: res => {
@@ -608,9 +610,11 @@ export class CoachUploadComponent {
     this.uploadStatusText = 'Uploading Excel & Running Allocation Engine...';
     this.errorMessage = '';
 
-    const coachId = this.authService.currentUserValue?.coachId || 1;
+    const user = this.authService.currentUserValue;
+    const coachId = user?.coachId ?? user?.userId;
+    if (!coachId) { this.isUploading = false; this.errorMessage = 'Session expired. Please log in again.'; return; }
 
-    this.coachService.uploadCohorts(coachId, this.selectedFile).subscribe({
+    this.coachService.uploadCohorts(coachId, this.selectedFile!).subscribe({
       next: res => {
         this.isUploading = false;
         if (res.success) {

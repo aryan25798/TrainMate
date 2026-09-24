@@ -154,14 +154,17 @@ export class CoachDashboardComponent implements OnInit {
   }
 
   loadData(): void {
-    const coachId = this.authService.currentUserValue?.coachId || 1;
+    const user = this.authService.currentUserValue;
+    const coachId = user?.coachId ?? user?.userId;
+    if (!coachId) return;
 
     this.coachService.getDashboard(coachId).subscribe({
       next: res => {
         if (res.success) {
           this.dashboard = res.data;
         }
-      }
+      },
+      error: err => console.error('Failed to load coach dashboard:', err)
     });
 
     this.coachService.getCohorts(coachId).subscribe({
@@ -169,7 +172,8 @@ export class CoachDashboardComponent implements OnInit {
         if (res.success) {
           this.recentCohorts = res.data.slice(0, 5);
         }
-      }
+      },
+      error: err => console.error('Failed to load coach cohorts:', err)
     });
   }
 

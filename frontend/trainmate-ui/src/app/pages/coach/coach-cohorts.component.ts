@@ -214,13 +214,16 @@ export class CoachCohortsComponent implements OnInit {
   }
 
   loadCohorts(): void {
-    const coachId = this.authService.currentUserValue?.coachId || 1;
+    const user = this.authService.currentUserValue;
+    const coachId = user?.coachId ?? user?.userId;
+    if (!coachId) return;
     this.coachService.getCohorts(coachId).subscribe({
       next: res => {
         if (res.success) {
           this.cohorts = res.data;
         }
-      }
+      },
+      error: err => console.error('Failed to load cohorts:', err)
     });
   }
 
