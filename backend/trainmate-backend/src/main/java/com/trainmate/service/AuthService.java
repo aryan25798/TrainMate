@@ -17,9 +17,9 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final TrainerRepository trainerRepository;
-    private final BCryptPasswordEncoder passwordEncoder;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
-    public AuthService(UserRepository userRepository, TrainerRepository trainerRepository, BCryptPasswordEncoder passwordEncoder) {
+    public AuthService(UserRepository userRepository, TrainerRepository trainerRepository, org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.trainerRepository = trainerRepository;
         this.passwordEncoder = passwordEncoder;
