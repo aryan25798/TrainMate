@@ -7,9 +7,9 @@ import {
   HttpErrorResponse
 } from '@angular/common/http';
 import { Observable, finalize, catchError, throwError } from 'rxjs';
-import { LoadingService } from './loading.service';
-import { ToastService } from './toast.service';
-import { AuthService } from './auth.service';
+import { LoadingService } from '../services/loading.service';
+import { ToastService } from '../services/toast.service';
+import { AuthService } from '../services/auth.service';
 import { Router } from '@angular/router';
 
 @Injectable()

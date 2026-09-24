@@ -126,6 +126,6 @@ public class NotificationService {
 
     @Transactional(readOnly = true)
     public long getUnreadCount(Long userId) {
-        return notificationRepository.findByReceiverUserIdAndIsReadFalse(userId).size();
+        return notificationRepository.countByReceiverUserIdAndIsReadFalse(userId);
     }
 }

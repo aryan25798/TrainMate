@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LoadingService } from '../../services/loading.service';
+import { LoadingService } from '../services/loading.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -77,7 +77,7 @@ export class LoadingSpinnerComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.subscription = this.loadingService.loading$.subscribe(
-      loading => this.isLoading = loading
+      (loading: boolean) => this.isLoading = loading
     );
   }
 

@@ -212,7 +212,13 @@ export class CreateCohortModalComponent {
     this.loading = true;
     this.errorMessage = '';
 
-    const coachId = this.authService.currentUserValue?.coachId || 1;
+    const user = this.authService.currentUserValue;
+    const coachId = user?.coachId ?? user?.userId;
+    if (!coachId) {
+      this.loading = false;
+      this.errorMessage = 'Session expired. Please log in again.';
+      return;
+    }
 
     this.coachService.createCohort(coachId, this.formData).subscribe({
       next: res => {

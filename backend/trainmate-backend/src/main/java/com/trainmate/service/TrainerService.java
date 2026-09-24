@@ -53,8 +53,8 @@ public class TrainerService {
         // Completed: endDate < today
         long completed = cohortRepository.countByAssignedTrainerIdAndEndDateBefore(trainerId, today);
 
-        // Mail count for trainer's user account
-        long unread = notificationRepository.countByReceiverUserId(trainer.getUser().getId());
+        // Mail count for trainer's user account (unread only)
+        long unread = notificationRepository.countByReceiverUserIdAndIsReadFalse(trainer.getUser().getId());
 
         return new TrainerDashboardResponse(active, upcoming, completed, unread);
     }

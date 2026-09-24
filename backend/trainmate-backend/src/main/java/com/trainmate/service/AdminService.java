@@ -141,9 +141,8 @@ public class AdminService {
         User user = new User();
         user.setName(req.getName());
         user.setEmail(req.getEmail());
-        // Use a secure random default password that must be changed on first login
-        // In production, this should be a secure random password sent via email
-        user.setPassword(passwordEncoder.encode("TempPass@" + System.currentTimeMillis()));
+        // Set default password so the registered trainer can log in (or change it)
+        user.setPassword(passwordEncoder.encode("trainer123"));
         user.setRole(Role.TRAINER);
         User savedUser = userRepository.save(user);
 
@@ -234,6 +233,10 @@ public class AdminService {
         }
 
         Trainer oldTrainer = cohort.getAssignedTrainer();
+        if (oldTrainer != null && oldTrainer.getId().equals(newTrainerId)) {
+            // Already assigned to this trainer, no workload adjustment or override needed
+            return cohortService.mapToResponse(cohort);
+        }
 
         // Decrement workload of previous trainer (with lock)
         if (oldTrainer != null) {
@@ -299,7 +302,11 @@ public class AdminService {
                 row.createCell(7).setCellValue(c.getLocation());
                 row.createCell(8).setCellValue(c.getStatus().name());
                 row.createCell(9).setCellValue(c.getCoachUser() != null ? c.getCoachUser().getName() : "");
-                row.createCell(10).setCellValue(c.getAssignedTrainer() != null ? c.getAssignedTrainer().getUser().getName() : "Unassigned");
+                String trainerName = "Unassigned";
+                if (c.getAssignedTrainer() != null) {
+                    trainerName = c.getAssignedTrainer().getUser() != null ? c.getAssignedTrainer().getUser().getName() : "Trainer #" + c.getAssignedTrainer().getId();
+                }
+                row.createCell(10).setCellValue(trainerName);
                 row.createCell(11).setCellValue(c.getAssignedTrainer() != null ? "Assigned" : "N/A");
             }
 

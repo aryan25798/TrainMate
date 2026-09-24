@@ -84,6 +84,8 @@ public class CohortService {
         cohort.setStartDate(request.getStartDate());
         cohort.setEndDate(request.getEndDate());
         cohort.setLocation(request.getLocation());
+        cohort.setVertical(request.getVertical() != null ? request.getVertical() : "General");
+        cohort.setUpdatedDate(java.time.LocalDateTime.now());
 
         Cohort saved = cohortRepository.save(cohort);
         return mapToResponse(saved);

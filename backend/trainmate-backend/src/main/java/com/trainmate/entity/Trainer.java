@@ -2,6 +2,7 @@ package com.trainmate.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "trainer")

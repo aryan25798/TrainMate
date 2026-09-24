@@ -23,6 +23,10 @@ public class AllocationScorer {
 
     private final CohortRepository cohortRepository;
 
+    public AllocationScorer() {
+        this.cohortRepository = null;
+    }
+
     public AllocationScorer(CohortRepository cohortRepository) {
         this.cohortRepository = cohortRepository;
     }
@@ -118,7 +122,9 @@ public class AllocationScorer {
         double experienceScore = calculateExperienceScore(trainer.getExperienceYears() != null ? trainer.getExperienceYears().intValue() : 0);
 
         // E. Previous Cohorts Score (0 - 10) - based on actual completed cohorts
-        long previousCohortsCount = cohortRepository.countByAssignedTrainerIdAndEndDateBefore(trainer.getId(), cohort.getStartDate());
+        long previousCohortsCount = cohortRepository != null 
+                ? cohortRepository.countByAssignedTrainerIdAndEndDateBefore(trainer.getId(), cohort.getStartDate()) 
+                : 0;
         double previousCohortsScore = calculatePreviousCohortsScore(previousCohortsCount);
 
         double totalScore = Math.round((skillScore + availabilityScore + workloadScore + experienceScore + previousCohortsScore) * 100.0) / 100.0;

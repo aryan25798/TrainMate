@@ -116,7 +116,12 @@ export class TrainerCohortsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    const trainerId = this.authService.currentUserValue?.trainerId || 1;
+    const user = this.authService.currentUserValue;
+    const trainerId = user?.trainerId;
+    if (!trainerId) {
+      console.warn('No trainerId found in user session');
+      return;
+    }
     this.trainerService.getCohorts(trainerId).subscribe({
       next: res => {
         if (res.success) {
