@@ -73,15 +73,10 @@ public class AdminService {
         resp.setActiveCohorts(cohortRepository.countByStatus(CohortStatus.ACTIVE));
         resp.setCompletedCohorts(cohortRepository.countByStatus(CohortStatus.COMPLETED));
 
-        long totalTrainers = trainerRepository.count();
-        resp.setTotalTrainers(totalTrainers);
-
-        long availableTrainers = trainerRepository.findAll().stream()
-                .filter(t -> t.getCurrentWorkload() < t.getMaxWorkload()
-                        && (t.getAvailableTill() == null || !t.getAvailableTill().isBefore(LocalDate.now())))
-                .count();
-        resp.setAvailableTrainers(availableTrainers);
-        resp.setUnavailableTrainers(totalTrainers - availableTrainers);
+        LocalDate today = LocalDate.now();
+        resp.setTotalTrainers(trainerRepository.count());
+        resp.setAvailableTrainers(trainerRepository.countAvailableTrainers(today));
+        resp.setUnavailableTrainers(trainerRepository.countUnavailableTrainers(today));
 
         return resp;
     }
