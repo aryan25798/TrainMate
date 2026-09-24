@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Cohort } from '../models/models';
 
@@ -141,7 +141,8 @@ import { Cohort } from '../models/models';
             </div>
 
             <!-- Explanation text -->
-            <div class="p-2.5 bg-light rounded-2 text-muted small fst-italic">
+            <div class="p-3 bg-light rounded-3 text-muted small fst-italic border">
+              <i class="bi bi-info-circle-fill text-primary me-1 not-italic"></i>
               {{ cohort.scoreBreakdown.explanation }}
             </div>
           </div>
@@ -152,13 +153,61 @@ import { Cohort } from '../models/models';
         </div>
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    .score-hero-circle {
+      width: 104px;
+      height: 104px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(0, 102, 245, 0.08) 0%, rgba(0, 210, 255, 0.12) 100%);
+      border: 3px solid rgba(0, 102, 245, 0.25);
+      box-shadow: 0 4px 16px rgba(0, 102, 245, 0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 0.85rem auto;
+    }
+    .score-hero-value {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: #000038;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .score-hero-total {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #0066f5;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .score-progress-bar-container {
+      width: 100%;
+      height: 8px;
+      background-color: #f1f5f9;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .score-progress-bar {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  `]
 })
 export class CohortDetailsModalComponent {
   @Input() cohort: Cohort | null = null;
   @Output() close = new EventEmitter<void>();
 
   onBackdropClick(e: MouseEvent): void {
+    this.close.emit();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
     this.close.emit();
   }
 

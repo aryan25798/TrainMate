@@ -17,6 +17,12 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
           <h1 class="page-title">My Assigned Cohorts</h1>
           <p class="page-subtitle">Cohorts assigned to your training schedule.</p>
         </div>
+        <div>
+          <button type="button" class="btn btn-secondary-custom" (click)="exportFilteredCsv()" title="Export assigned cohorts to CSV">
+            <i class="bi bi-file-earmark-arrow-down text-primary"></i>
+            Export CSV
+          </button>
+        </div>
       </div>
 
       <!-- Search & Status Filter (FRD Section 69) -->
@@ -53,13 +59,34 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
           <table class="table table-hover align-middle">
             <thead>
               <tr>
-                <th class="text-nowrap">Cohort Code</th>
-                <th>Required Skill</th>
-                <th class="text-nowrap">Coach</th>
-                <th class="text-nowrap">Trainees</th>
-                <th class="text-nowrap">Duration</th>
-                <th>Location</th>
-                <th class="text-nowrap">Status</th>
+                <th class="text-nowrap sortable-th" (click)="sort('cohortCode')">
+                  Cohort Code
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('cohortCode')"></i></span>
+                </th>
+                <th class="sortable-th" (click)="sort('requiredSkill')">
+                  Required Skill
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('requiredSkill')"></i></span>
+                </th>
+                <th class="text-nowrap sortable-th" (click)="sort('coachName')">
+                  Coach
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('coachName')"></i></span>
+                </th>
+                <th class="text-nowrap sortable-th" (click)="sort('numberOfTrainees')">
+                  Trainees
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('numberOfTrainees')"></i></span>
+                </th>
+                <th class="text-nowrap sortable-th" (click)="sort('startDate')">
+                  Duration
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('startDate')"></i></span>
+                </th>
+                <th class="sortable-th" (click)="sort('location')">
+                  Location
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('location')"></i></span>
+                </th>
+                <th class="text-nowrap sortable-th" (click)="sort('status')">
+                  Status
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('status')"></i></span>
+                </th>
                 <th class="text-end text-nowrap">Action</th>
               </tr>
             </thead>
@@ -131,8 +158,51 @@ export class TrainerCohortsComponent implements OnInit {
     });
   }
 
+  sortField: string = 'cohortCode';
+  sortAsc: boolean = true;
+
+  sort(field: string): void {
+    if (this.sortField === field) {
+      this.sortAsc = !this.sortAsc;
+    } else {
+      this.sortField = field;
+      this.sortAsc = true;
+    }
+  }
+
+  getSortIcon(field: string): string {
+    if (this.sortField !== field) return 'bi-arrow-down-up text-muted opacity-50';
+    return this.sortAsc ? 'bi-sort-up-alt text-primary' : 'bi-sort-down text-primary';
+  }
+
+  exportFilteredCsv(): void {
+    const list = this.filteredCohorts;
+    if (!list || list.length === 0) return;
+
+    const headers = ['Cohort Code', 'Required Skill', 'Coach', 'Trainees', 'Start Date', 'End Date', 'Location', 'Status'];
+    const rows = list.map(c => [
+      `"${c.cohortCode || ''}"`,
+      `"${c.requiredSkill || ''}"`,
+      `"${c.coachName || ''}"`,
+      c.numberOfTrainees || 0,
+      `"${c.startDate || ''}"`,
+      `"${c.endDate || ''}"`,
+      `"${c.location || ''}"`,
+      `"${c.status || ''}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `my_assigned_cohorts_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   get filteredCohorts(): Cohort[] {
-    return this.cohorts.filter(c => {
+    const filtered = this.cohorts.filter(c => {
       const matchesSearch = !this.searchQuery ||
         c.cohortCode.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
         c.requiredSkill.toLowerCase().includes(this.searchQuery.toLowerCase());
@@ -140,6 +210,21 @@ export class TrainerCohortsComponent implements OnInit {
       const matchesStatus = !this.statusFilter || c.status === this.statusFilter;
 
       return matchesSearch && matchesStatus;
+    });
+
+    return filtered.sort((a, b) => {
+      let valA: any = (a as any)[this.sortField] ?? '';
+      let valB: any = (b as any)[this.sortField] ?? '';
+
+      if (typeof valA === 'string') {
+        valA = valA.toLowerCase();
+        valB = (valB || '').toString().toLowerCase();
+        return this.sortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+
+      if (valA < valB) return this.sortAsc ? -1 : 1;
+      if (valA > valB) return this.sortAsc ? 1 : -1;
+      return 0;
     });
   }
 

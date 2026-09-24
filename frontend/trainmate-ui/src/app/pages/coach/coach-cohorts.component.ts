@@ -33,6 +33,10 @@ import { getInitials } from '../../shared/utils/helpers';
           <p class="page-subtitle">View, edit, reallocate, and monitor cohorts assigned to your coaching portfolio.</p>
         </div>
         <div class="d-flex gap-2">
+          <button type="button" class="btn btn-secondary-custom" (click)="exportFilteredCsv()" title="Export filtered cohorts to CSV">
+            <i class="bi bi-file-earmark-arrow-down text-primary"></i>
+            Export CSV
+          </button>
           <button type="button" class="btn btn-primary-custom" (click)="showCreateModal = true">
             <i class="bi bi-plus-circle-fill"></i>
             Create Cohort
@@ -77,14 +81,38 @@ import { getInitials } from '../../shared/utils/helpers';
           <table class="table table-hover align-middle">
             <thead>
               <tr>
-                <th class="text-nowrap">Cohort Code</th>
-                <th>Service Line</th>
-                <th>Required Skill</th>
-                <th class="text-nowrap">Trainees</th>
-                <th class="text-nowrap">Duration</th>
-                <th>Vertical / Loc</th>
-                <th>Assigned Trainer</th>
-                <th class="text-nowrap">Status</th>
+                <th class="text-nowrap sortable-th" (click)="sort('cohortCode')">
+                  Cohort Code
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('cohortCode')"></i></span>
+                </th>
+                <th class="sortable-th" (click)="sort('serviceLine')">
+                  Service Line
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('serviceLine')"></i></span>
+                </th>
+                <th class="sortable-th" (click)="sort('requiredSkill')">
+                  Required Skill
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('requiredSkill')"></i></span>
+                </th>
+                <th class="text-nowrap sortable-th" (click)="sort('numberOfTrainees')">
+                  Trainees
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('numberOfTrainees')"></i></span>
+                </th>
+                <th class="text-nowrap sortable-th" (click)="sort('startDate')">
+                  Duration
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('startDate')"></i></span>
+                </th>
+                <th class="sortable-th" (click)="sort('vertical')">
+                  Vertical / Loc
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('vertical')"></i></span>
+                </th>
+                <th class="sortable-th" (click)="sort('assignedTrainerName')">
+                  Assigned Trainer
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('assignedTrainerName')"></i></span>
+                </th>
+                <th class="text-nowrap sortable-th" (click)="sort('status')">
+                  Status
+                  <span class="sort-icon"><i class="bi" [ngClass]="getSortIcon('status')"></i></span>
+                </th>
                 <th class="text-end text-nowrap">Actions</th>
               </tr>
             </thead>
@@ -296,8 +324,59 @@ export class CoachCohortsComponent implements OnInit {
     });
   }
 
+  sortField: string = 'cohortCode';
+  sortAsc: boolean = true;
+
+  sort(field: string): void {
+    if (this.sortField === field) {
+      this.sortAsc = !this.sortAsc;
+    } else {
+      this.sortField = field;
+      this.sortAsc = true;
+    }
+  }
+
+  getSortIcon(field: string): string {
+    if (this.sortField !== field) return 'bi-arrow-down-up text-muted opacity-50';
+    return this.sortAsc ? 'bi-sort-up-alt text-primary' : 'bi-sort-down text-primary';
+  }
+
+  exportFilteredCsv(): void {
+    const list = this.filteredCohorts;
+    if (!list || list.length === 0) {
+      this.toastService.warning('No cohorts available to export.');
+      return;
+    }
+
+    const headers = ['Cohort Code', 'Service Line', 'Stream', 'Required Skill', 'Trainees', 'Start Date', 'End Date', 'Vertical', 'Location', 'Assigned Trainer', 'Score', 'Status'];
+    const rows = list.map(c => [
+      `"${c.cohortCode || ''}"`,
+      `"${c.serviceLine || ''}"`,
+      `"${c.stream || ''}"`,
+      `"${c.requiredSkill || ''}"`,
+      c.numberOfTrainees || 0,
+      `"${c.startDate || ''}"`,
+      `"${c.endDate || ''}"`,
+      `"${c.vertical || ''}"`,
+      `"${c.location || ''}"`,
+      `"${c.assignedTrainerName || 'Unassigned'}"`,
+      c.allocationScore || '',
+      `"${c.status || ''}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `my_cohorts_export_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    this.toastService.success(`Exported ${list.length} cohorts to CSV.`);
+  }
+
   get filteredCohorts(): Cohort[] {
-    return this.cohorts.filter(c => {
+    const filtered = this.cohorts.filter(c => {
       const matchesSearch = !this.searchQuery ||
         c.cohortCode.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
         c.requiredSkill.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
@@ -306,6 +385,21 @@ export class CoachCohortsComponent implements OnInit {
       const matchesStatus = !this.statusFilter || c.status === this.statusFilter;
 
       return matchesSearch && matchesStatus;
+    });
+
+    return filtered.sort((a, b) => {
+      let valA: any = (a as any)[this.sortField] ?? '';
+      let valB: any = (b as any)[this.sortField] ?? '';
+
+      if (typeof valA === 'string') {
+        valA = valA.toLowerCase();
+        valB = (valB || '').toString().toLowerCase();
+        return this.sortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+
+      if (valA < valB) return this.sortAsc ? -1 : 1;
+      if (valA > valB) return this.sortAsc ? 1 : -1;
+      return 0;
     });
   }
 
