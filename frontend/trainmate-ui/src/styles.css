@@ -54,7 +54,7 @@ html, body {
 .login-container {
   height: 100vh;
   height: 100dvh;
-  width: 100vw;
+  width: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   background-color: #f8fafc;
