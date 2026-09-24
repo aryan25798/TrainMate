@@ -5,7 +5,6 @@ import { filter, Subscription } from 'rxjs';
 import { ToastContainerComponent } from './shared/toast-container.component';
 import { LoadingSpinnerComponent } from './shared/loading-spinner.component';
 import { AuthService } from './services/auth.service';
-import { NotificationService } from './services/notification.service';
 
 @Component({
   selector: 'app-root',
@@ -71,12 +70,9 @@ import { NotificationService } from './services/notification.service';
             <span class="fw-semibold text-dark small d-none d-md-inline">{{ currentUserName }}</span>
           </div>
 
-          <!-- Internal Mailbox Icon with live badge -->
-          <a [routerLink]="getMailRoute()" class="btn btn-sm btn-icon-mailbox position-relative" title="Internal Mailbox" aria-label="Internal Mailbox">
+          <!-- Internal Mailbox Icon -->
+          <a [routerLink]="getMailRoute()" class="btn btn-sm btn-icon-mailbox" title="Internal Mailbox" aria-label="Internal Mailbox">
             <i class="bi bi-envelope fs-5"></i>
-            <span *ngIf="unreadNotificationCount > 0" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem; padding: 0.25em 0.45em; border: 2px solid #ffffff;">
-              {{ unreadNotificationCount > 9 ? '9+' : unreadNotificationCount }}
-            </span>
           </a>
 
           <!-- Sign Out Button -->
@@ -236,15 +232,10 @@ export class AppComponent implements OnInit, OnDestroy {
   showLogoutConfirm: boolean = false;
   currentUserRole: string = '';
   currentUserName: string = '';
-  unreadNotificationCount: number = 0;
   private isMobile: boolean = false;
   private resizeSubscription?: Subscription;
 
-  constructor(
-    private router: Router,
-    private authService: AuthService,
-    private notificationService: NotificationService
-  ) {
+  constructor(private router: Router, private authService: AuthService) {
     this.checkScreenSize();
   }
 
@@ -255,10 +246,11 @@ export class AppComponent implements OnInit, OnDestroy {
       this.isAuthPage = event.urlAfterRedirects.startsWith('/login') || event.url === '/';
       this.sidebarOpenMobile = false;
       this.syncUserInfo();
-      this.fetchUnreadNotifications();
     });
 
+    // Listen for window resize to update mobile/desktop state
     this.resizeSubscription = new Subscription();
+    // We'll use HostListener instead for simplicity
   }
 
   ngOnDestroy(): void {
@@ -270,13 +262,6 @@ export class AppComponent implements OnInit, OnDestroy {
   @HostListener('window:resize')
   onResize(): void {
     this.checkScreenSize();
-  }
-
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
-    if (this.showLogoutConfirm) {
-      this.showLogoutConfirm = false;
-    }
   }
 
   private checkScreenSize(): void {
@@ -307,19 +292,6 @@ export class AppComponent implements OnInit, OnDestroy {
     const user = this.authService.currentUserValue;
     this.currentUserRole = user?.role || '';
     this.currentUserName = user?.name || 'Associate';
-  }
-
-  fetchUnreadNotifications(): void {
-    const user = this.authService.currentUserValue;
-    if (!user || !user.userId) return;
-    this.notificationService.getUnreadCount(user.userId).subscribe({
-      next: res => {
-        if (res.success) {
-          this.unreadNotificationCount = res.data;
-        }
-      },
-      error: () => {}
-    });
   }
 
   getUserInitial(): string {

@@ -38,8 +38,7 @@ import { getInitials } from '../../shared/utils/helpers';
         <div class="stat-card">
           <div>
             <div class="stat-title">Total Cohorts</div>
-            <div class="stat-value" *ngIf="!isLoading">{{ dashboard?.totalCohorts || 0 }}</div>
-            <div *ngIf="isLoading" class="skeleton-line" style="width:50px;height:32px;border-radius:6px;"></div>
+            <div class="stat-value">{{ dashboard?.totalCohorts || 0 }}</div>
           </div>
           <div class="stat-icon blue">
             <i class="bi bi-collection-fill"></i>
@@ -49,8 +48,7 @@ import { getInitials } from '../../shared/utils/helpers';
         <div class="stat-card">
           <div>
             <div class="stat-title">Assigned Cohorts</div>
-            <div class="stat-value text-success" *ngIf="!isLoading">{{ dashboard?.assigned || 0 }}</div>
-            <div *ngIf="isLoading" class="skeleton-line" style="width:50px;height:32px;border-radius:6px;"></div>
+            <div class="stat-value text-success">{{ dashboard?.assigned || 0 }}</div>
           </div>
           <div class="stat-icon green">
             <i class="bi bi-check-circle-fill"></i>
@@ -60,22 +58,10 @@ import { getInitials } from '../../shared/utils/helpers';
         <div class="stat-card">
           <div>
             <div class="stat-title">Unassigned Cohorts</div>
-            <div class="stat-value text-danger" *ngIf="!isLoading">{{ dashboard?.unassigned || 0 }}</div>
-            <div *ngIf="isLoading" class="skeleton-line" style="width:50px;height:32px;border-radius:6px;"></div>
+            <div class="stat-value text-danger">{{ dashboard?.unassigned || 0 }}</div>
           </div>
           <div class="stat-icon red">
             <i class="bi bi-exclamation-octagon-fill"></i>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <div>
-            <div class="stat-title">Allocation Rate</div>
-            <div class="stat-value text-primary" *ngIf="!isLoading">{{ allocationRate }}%</div>
-            <div *ngIf="isLoading" class="skeleton-line" style="width:60px;height:32px;border-radius:6px;"></div>
-          </div>
-          <div class="stat-icon purple">
-            <i class="bi bi-bullseye"></i>
           </div>
         </div>
       </div>
@@ -149,19 +135,7 @@ import { getInitials } from '../../shared/utils/helpers';
       (close)="showCreateModal = false"
       (cohortCreated)="onCohortCreated($event)">
     </app-create-cohort-modal>
-  `,
-  styles: [`
-    @keyframes shimmer {
-      0% { background-position: -400px 0; }
-      100% { background-position: 400px 0; }
-    }
-    .skeleton-line {
-      background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
-      background-size: 800px 100%;
-      animation: shimmer 1.4s infinite linear;
-      display: inline-block;
-    }
-  `]
+  `
 })
 export class CoachDashboardComponent implements OnInit {
   dashboard: CoachDashboard | null = null;
@@ -169,7 +143,6 @@ export class CoachDashboardComponent implements OnInit {
   selectedCohort: Cohort | null = null;
   showCreateModal: boolean = false;
   userName: string = 'Coach';
-  isLoading: boolean = true;
 
   constructor(
     private coachService: CoachService,
@@ -182,31 +155,18 @@ export class CoachDashboardComponent implements OnInit {
     this.loadData();
   }
 
-  get allocationRate(): number {
-    if (!this.dashboard || !this.dashboard.totalCohorts) return 0;
-    return Math.round((this.dashboard.assigned / this.dashboard.totalCohorts) * 100);
-  }
-
   loadData(): void {
     const user = this.authService.currentUserValue;
     const coachId = user?.coachId ?? user?.userId;
-    if (!coachId) {
-      this.isLoading = false;
-      return;
-    }
+    if (!coachId) return;
 
-    this.isLoading = true;
     this.coachService.getDashboard(coachId).subscribe({
       next: res => {
         if (res.success) {
           this.dashboard = res.data;
         }
-        this.isLoading = false;
       },
-      error: err => {
-        console.error('Failed to load coach dashboard:', err);
-        this.isLoading = false;
-      }
+      error: err => console.error('Failed to load coach dashboard:', err)
     });
 
     this.coachService.getCohorts(coachId).subscribe({

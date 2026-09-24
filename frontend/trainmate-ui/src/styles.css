@@ -54,7 +54,7 @@ html, body {
 .login-container {
   height: 100vh;
   height: 100dvh;
-  width: 100%;
+  width: 100vw;
   overflow-y: auto;
   overflow-x: hidden;
   background-color: #f8fafc;
@@ -669,40 +669,12 @@ html, body {
   white-space: nowrap;
 }
 
-.table thead th.sortable-th {
-  cursor: pointer;
-  user-select: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.table thead th.sortable-th:hover {
-  background-color: #f1f5f9;
-  color: var(--cognizant-blue);
-}
-
-.sort-icon {
-  font-size: 0.75rem;
-  margin-left: 0.35rem;
-  display: inline-block;
-  vertical-align: middle;
-  opacity: 0.75;
-}
-
-.table thead th.sortable-th:hover .sort-icon {
-  opacity: 1;
-}
-
 .table tbody td {
   padding: 0.85rem 1.15rem;
   font-size: 0.9rem;
   color: #334155;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
-  font-variant-numeric: tabular-nums;
-}
-
-.table-hover tbody tr {
-  transition: background-color 0.15s ease;
 }
 
 .table-hover tbody tr:hover {
