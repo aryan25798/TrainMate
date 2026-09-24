@@ -3,6 +3,7 @@ package com.trainmate.allocation;
 import com.trainmate.dto.ScoreBreakdownDTO;
 import com.trainmate.entity.Cohort;
 import com.trainmate.entity.Trainer;
+import com.trainmate.repository.CohortRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -19,6 +20,12 @@ public class AllocationScorer {
     public static final double WORKLOAD_WEIGHT = 15.0;
     public static final double EXPERIENCE_WEIGHT = 15.0;
     public static final double PREVIOUS_COHORT_WEIGHT = 10.0;
+
+    private final CohortRepository cohortRepository;
+
+    public AllocationScorer(CohortRepository cohortRepository) {
+        this.cohortRepository = cohortRepository;
+    }
 
     /**
      * Evaluates a trainer's eligibility and computes their 100-point score for a cohort.
@@ -110,17 +117,19 @@ public class AllocationScorer {
         // D. Experience Score (0 - 15)
         double experienceScore = calculateExperienceScore(trainer.getExperienceYears() != null ? trainer.getExperienceYears().intValue() : 0);
 
-        // E. Previous Cohorts Score (0 - 10)
-        double previousCohortsScore = 10.0; // standard senior capacity default
+        // E. Previous Cohorts Score (0 - 10) - based on actual completed cohorts
+        long previousCohortsCount = cohortRepository.countByAssignedTrainerIdAndEndDateBefore(trainer.getId(), cohort.getStartDate());
+        double previousCohortsScore = calculatePreviousCohortsScore(previousCohortsCount);
 
         double totalScore = Math.round((skillScore + availabilityScore + workloadScore + experienceScore + previousCohortsScore) * 100.0) / 100.0;
 
         String explanation = String.format(
-                "Skill Match: %.1f/40 (%d/%d matched), Availability: %.1f/20, Workload: %.1f/15 (%d/%d), Experience: %.1f/15. Total: %.1f/100",
+                "Skill Match: %.1f/40 (%d/%d matched), Availability: %.1f/20, Workload: %.1f/15 (%d/%d), Experience: %.1f/15, Previous Cohorts: %.1f/10 (%d completed). Total: %.1f/100",
                 skillScore, matchedSkillsCount, requiredSkills.size(),
                 availabilityScore,
                 workloadScore, trainer.getCurrentWorkload(), trainer.getMaxWorkload(),
                 experienceScore,
+                previousCohortsScore, previousCohortsCount,
                 totalScore
         );
 
@@ -145,6 +154,18 @@ public class AllocationScorer {
         }
     }
 
+    public double calculatePreviousCohortsScore(long completedCohortsCount) {
+        if (completedCohortsCount == 0) {
+            return 3.0;
+        } else if (completedCohortsCount <= 2) {
+            return 5.0;
+        } else if (completedCohortsCount <= 5) {
+            return 8.0;
+        } else {
+            return 10.0;
+        }
+    }
+
     public List<String> parseSkills(String skillsString) {
         if (skillsString == null || skillsString.trim().isEmpty()) {
             return Collections.emptyList();
@@ -157,14 +178,6 @@ public class AllocationScorer {
 
     private boolean isSkillMatched(String requiredSkill, Set<String> trainerSkills) {
         String req = requiredSkill.toLowerCase().trim();
-        if (trainerSkills.contains(req)) {
-            return true;
-        }
-        for (String ts : trainerSkills) {
-            if (ts.equals(req) || ts.contains(req) || req.contains(ts)) {
-                return true;
-            }
-        }
-        return false;
+        return trainerSkills.contains(req);
     }
 }

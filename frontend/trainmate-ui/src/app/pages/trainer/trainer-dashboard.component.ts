@@ -5,11 +5,13 @@ import { TrainerService } from '../../services/trainer.service';
 import { AuthService } from '../../services/auth.service';
 import { Cohort, TrainerDashboard } from '../../models/models';
 import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.component';
+import { StatusBadgePipe } from '../../shared/pipes/status-badge.pipe';
+import { getInitials } from '../../shared/utils/helpers';
 
 @Component({
   selector: 'app-trainer-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, CohortDetailsModalComponent],
+  imports: [CommonModule, RouterModule, CohortDetailsModalComponent, StatusBadgePipe],
   template: `
     <div>
       <div class="page-header">
@@ -75,22 +77,22 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
             </thead>
             <tbody>
               <tr *ngFor="let c of cohorts">
-                <td class="fw-bold text-dark text-nowrap">{{ c.cohortCode }}</td>
-                <td><span class="badge-tag">{{ c.requiredSkill }}</span></td>
-                <td class="text-nowrap">{{ c.coachName || 'N/A' }}</td>
-                <td class="text-nowrap">{{ c.numberOfTrainees }}</td>
-                <td class="text-nowrap">
+                <td class="fw-bold text-dark text-nowrap" data-label="Cohort Code">{{ c.cohortCode }}</td>
+                <td data-label="Required Skill"><span class="badge-tag">{{ c.requiredSkill }}</span></td>
+                <td class="text-nowrap" data-label="Coach">{{ c.coachName || 'N/A' }}</td>
+                <td class="text-nowrap" data-label="Trainees">{{ c.numberOfTrainees }}</td>
+                <td class="text-nowrap" data-label="Duration">
                   <div class="fw-medium small text-dark">{{ c.startDate }}</div>
                   <small class="text-muted">{{ c.endDate }}</small>
                 </td>
-                <td class="text-nowrap">{{ c.location }}</td>
-                <td class="text-nowrap">
-                  <span class="badge-status" [ngClass]="getStatusBadgeClass(c.status)">{{ c.status }}</span>
+                <td class="text-nowrap" data-label="Location">{{ c.location }}</td>
+                <td class="text-nowrap" data-label="Status">
+                  <span class="badge-status" [ngClass]="c.status | statusBadge">{{ c.status }}</span>
                 </td>
-                <td class="text-end text-nowrap">
+                <td class="text-end text-nowrap action-cell" data-label="Actions">
                   <div class="action-btn-group">
-                    <button class="action-btn btn-view" title="View Cohort Details" (click)="selectedCohort = c">
-                      <i class="bi bi-eye"></i>
+                    <button class="action-btn btn-view" title="View Cohort Details" (click)="selectedCohort = c" aria-label="View cohort details">
+                      <i class="bi bi-eye" aria-hidden="true"></i>
                     </button>
                   </div>
                 </td>
@@ -128,7 +130,12 @@ export class TrainerDashboardComponent implements OnInit {
   ngOnInit(): void {
     const user = this.authService.currentUserValue;
     this.userName = user?.name || 'Trainer';
-    const trainerId = user?.trainerId || 1;
+    const trainerId = user?.trainerId;
+    
+    if (!trainerId) {
+      console.error('No trainerId found in user session');
+      return;
+    }
 
     this.trainerService.getDashboard(trainerId).subscribe({
       next: res => {
@@ -147,15 +154,5 @@ export class TrainerDashboardComponent implements OnInit {
     });
   }
 
-  getStatusBadgeClass(status: string): string {
-    switch (status) {
-      case 'ASSIGNED': return 'badge-assigned';
-      case 'UNASSIGNED': return 'badge-unassigned';
-      case 'PENDING': return 'badge-pending';
-      case 'ACTIVE': return 'badge-active';
-      case 'COMPLETED': return 'badge-completed';
-      case 'PROCESSING': return 'badge-processing';
-      default: return 'badge-secondary';
-    }
-  }
+  protected readonly getInitials = getInitials;
 }

@@ -1,17 +1,21 @@
-import { Component } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs/operators';
+import { filter, Subscription } from 'rxjs';
 import { ToastContainerComponent } from './shared/toast-container.component';
+import { LoadingSpinnerComponent } from './shared/loading-spinner.component';
 import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterModule, ToastContainerComponent],
+  imports: [CommonModule, RouterModule, ToastContainerComponent, LoadingSpinnerComponent],
   template: `
     <!-- Global Toast Notifications -->
     <app-toast-container></app-toast-container>
+
+    <!-- Global Loading Spinner -->
+    <app-loading-spinner></app-loading-spinner>
 
     <!-- If on Login page, show full-screen scroll container -->
     <div *ngIf="isAuthPage" class="login-container">
@@ -29,7 +33,10 @@ import { AuthService } from './services/auth.service';
             type="button"
             class="navbar-hamburger-btn"
             (click)="toggleSidebar()"
-            title="Toggle Navigation Menu">
+            title="Toggle Navigation Menu"
+            aria-label="Toggle navigation menu"
+            aria-expanded="false"
+            [attr.aria-expanded]="sidebarOpenMobile || !sidebarClosedDesktop">
             <i class="bi bi-list fs-4"></i>
           </button>
 
@@ -57,19 +64,19 @@ import { AuthService } from './services/auth.service';
 
           <!-- User Profile Chip -->
           <div class="user-profile-chip">
-            <span class="user-avatar-chip">
+            <span class="user-avatar-chip" aria-hidden="true">
               {{ getUserInitial() }}
             </span>
             <span class="fw-semibold text-dark small d-none d-md-inline">{{ currentUserName }}</span>
           </div>
 
           <!-- Internal Mailbox Icon -->
-          <a [routerLink]="getMailRoute()" class="btn btn-sm btn-icon-mailbox" title="Internal Mailbox">
+          <a [routerLink]="getMailRoute()" class="btn btn-sm btn-icon-mailbox" title="Internal Mailbox" aria-label="Internal Mailbox">
             <i class="bi bi-envelope fs-5"></i>
           </a>
 
           <!-- Sign Out Button -->
-          <button class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1.5 px-2.5 px-sm-3 py-1" (click)="showLogoutConfirm = true" title="Sign Out">
+          <button class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1.5 px-2.5 px-sm-3 py-1" (click)="showLogoutConfirm = true" title="Sign Out" aria-label="Sign Out">
             <i class="bi bi-box-arrow-right"></i>
             <span class="d-none d-sm-inline">Sign Out</span>
           </button>
@@ -80,109 +87,112 @@ import { AuthService } from './services/auth.service';
       <div class="app-body">
         
         <!-- Mobile Backdrop Overlay -->
-        <div class="mobile-backdrop" [class.show]="sidebarOpenMobile" (click)="sidebarOpenMobile = false"></div>
+        <div class="mobile-backdrop" [class.show]="sidebarOpenMobile" (click)="sidebarOpenMobile = false" aria-hidden="true"></div>
 
         <!-- Persistent Sidebar (Smooth Slide-Toggle) -->
         <aside
           class="app-sidebar"
           [class.desktop-collapsed]="sidebarClosedDesktop"
-          [class.mobile-open]="sidebarOpenMobile">
-          
-          <!-- Associate Info Box in Sidebar -->
-          <div class="sidebar-user-card" *ngIf="currentUserName">
-            <div class="d-flex align-items-center gap-2.5">
-              <div class="sidebar-user-avatar">
-                {{ getUserInitial() }}
-              </div>
-              <div class="sidebar-user-details text-truncate">
-                <div class="sidebar-user-name text-truncate">{{ currentUserName }}</div>
-                <div class="sidebar-user-role">{{ currentUserRole }}</div>
-              </div>
+          [class.mobile-open]="sidebarOpenMobile"
+          [attr.aria-hidden]="sidebarClosedDesktop || !sidebarOpenMobile"
+          role="navigation"
+          aria-label="Main navigation">
+        
+        <!-- Associate Info Box in Sidebar -->
+        <div class="sidebar-user-card" *ngIf="currentUserName">
+          <div class="d-flex align-items-center gap-2.5">
+            <div class="sidebar-user-avatar" aria-hidden="true">
+              {{ getUserInitial() }}
+            </div>
+            <div class="sidebar-user-details text-truncate">
+              <div class="sidebar-user-name text-truncate">{{ currentUserName }}</div>
+              <div class="sidebar-user-role">{{ currentUserRole }}</div>
             </div>
           </div>
+        </div>
 
-          <!-- Navigation Links -->
-          <nav class="sidebar-nav-container">
-            <!-- COACH NAV -->
-            <ng-container *ngIf="currentUserRole === 'COACH'">
-              <a class="nav-item-link" routerLink="/coach/dashboard" routerLinkActive="active" (click)="onNavClick()">
-                <i class="bi bi-grid-1x2-fill"></i>
-                <span>Dashboard</span>
-              </a>
-              <a class="nav-item-link" routerLink="/coach/upload" routerLinkActive="active" (click)="onNavClick()">
-                <i class="bi bi-plus-circle-fill"></i>
-                <span>Add Cohort</span>
-              </a>
-              <a class="nav-item-link" routerLink="/coach/cohorts" routerLinkActive="active" (click)="onNavClick()">
-                <i class="bi bi-collection-fill"></i>
-                <span>My Cohorts</span>
-              </a>
-              <a class="nav-item-link" routerLink="/coach/mail" routerLinkActive="active" (click)="onNavClick()">
-                <i class="bi bi-envelope-fill"></i>
-                <span>Mailbox</span>
-              </a>
-            </ng-container>
+        <!-- Navigation Links -->
+        <nav class="sidebar-nav-container">
+          <!-- COACH NAV -->
+          <ng-container *ngIf="currentUserRole === 'COACH'">
+            <a class="nav-item-link" routerLink="/coach/dashboard" routerLinkActive="active" (click)="onNavClick()" tabindex="0" role="menuitem">
+              <i class="bi bi-grid-1x2-fill" aria-hidden="true"></i>
+              <span>Dashboard</span>
+            </a>
+            <a class="nav-item-link" routerLink="/coach/upload" routerLinkActive="active" (click)="onNavClick()" tabindex="0" role="menuitem">
+              <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
+              <span>Add Cohort</span>
+            </a>
+            <a class="nav-item-link" routerLink="/coach/cohorts" routerLinkActive="active" (click)="onNavClick()" tabindex="0" role="menuitem">
+              <i class="bi bi-collection-fill" aria-hidden="true"></i>
+              <span>My Cohorts</span>
+            </a>
+            <a class="nav-item-link" routerLink="/coach/mail" routerLinkActive="active" (click)="onNavClick()" tabindex="0" role="menuitem">
+              <i class="bi bi-envelope-fill" aria-hidden="true"></i>
+              <span>Mailbox</span>
+            </a>
+          </ng-container>
 
-            <!-- TRAINER NAV -->
-            <ng-container *ngIf="currentUserRole === 'TRAINER'">
-              <a class="nav-item-link" routerLink="/trainer/dashboard" routerLinkActive="active" (click)="onNavClick()">
-                <i class="bi bi-grid-1x2-fill"></i>
-                <span>Dashboard</span>
-              </a>
-              <a class="nav-item-link" routerLink="/trainer/cohorts" routerLinkActive="active" (click)="onNavClick()">
-                <i class="bi bi-calendar-check-fill"></i>
-                <span>My Cohorts</span>
-              </a>
-              <a class="nav-item-link" routerLink="/trainer/mail" routerLinkActive="active" (click)="onNavClick()">
-                <i class="bi bi-envelope-fill"></i>
-                <span>Mailbox</span>
-              </a>
-            </ng-container>
+          <!-- TRAINER NAV -->
+          <ng-container *ngIf="currentUserRole === 'TRAINER'">
+            <a class="nav-item-link" routerLink="/trainer/dashboard" routerLinkActive="active" (click)="onNavClick()" tabindex="0" role="menuitem">
+              <i class="bi bi-grid-1x2-fill" aria-hidden="true"></i>
+              <span>Dashboard</span>
+            </a>
+            <a class="nav-item-link" routerLink="/trainer/cohorts" routerLinkActive="active" (click)="onNavClick()" tabindex="0" role="menuitem">
+              <i class="bi bi-calendar-check-fill" aria-hidden="true"></i>
+              <span>My Cohorts</span>
+            </a>
+            <a class="nav-item-link" routerLink="/trainer/mail" routerLinkActive="active" (click)="onNavClick()" tabindex="0" role="menuitem">
+              <i class="bi bi-envelope-fill" aria-hidden="true"></i>
+              <span>Mailbox</span>
+            </a>
+          </ng-container>
 
-            <!-- ADMIN NAV -->
-            <ng-container *ngIf="currentUserRole === 'ADMIN'">
-              <a class="nav-item-link" routerLink="/admin/dashboard" routerLinkActive="active" (click)="onNavClick()">
-                <i class="bi bi-grid-1x2-fill"></i>
-                <span>Dashboard</span>
-              </a>
-              <a class="nav-item-link" routerLink="/admin/cohorts" routerLinkActive="active" (click)="onNavClick()">
-                <i class="bi bi-diagram-3-fill"></i>
-                <span>All Cohorts</span>
-              </a>
-              <a class="nav-item-link" routerLink="/admin/trainers" routerLinkActive="active" (click)="onNavClick()">
-                <i class="bi bi-people-fill"></i>
-                <span>Trainers Pool</span>
-              </a>
-              <a class="nav-item-link" routerLink="/admin/mail" routerLinkActive="active" (click)="onNavClick()">
-                <i class="bi bi-envelope-fill"></i>
-                <span>Mailbox</span>
-              </a>
-            </ng-container>
-          </nav>
+          <!-- ADMIN NAV -->
+          <ng-container *ngIf="currentUserRole === 'ADMIN'">
+            <a class="nav-item-link" routerLink="/admin/dashboard" routerLinkActive="active" (click)="onNavClick()" tabindex="0" role="menuitem">
+              <i class="bi bi-grid-1x2-fill" aria-hidden="true"></i>
+              <span>Dashboard</span>
+            </a>
+            <a class="nav-item-link" routerLink="/admin/cohorts" routerLinkActive="active" (click)="onNavClick()" tabindex="0" role="menuitem">
+              <i class="bi bi-diagram-3-fill" aria-hidden="true"></i>
+              <span>All Cohorts</span>
+            </a>
+            <a class="nav-item-link" routerLink="/admin/trainers" routerLinkActive="active" (click)="onNavClick()" tabindex="0" role="menuitem">
+              <i class="bi bi-people-fill" aria-hidden="true"></i>
+              <span>Trainers Pool</span>
+            </a>
+            <a class="nav-item-link" routerLink="/admin/mail" routerLinkActive="active" (click)="onNavClick()" tabindex="0" role="menuitem">
+              <i class="bi bi-envelope-fill" aria-hidden="true"></i>
+              <span>Mailbox</span>
+            </a>
+          </ng-container>
+        </nav>
 
-          <!-- Sidebar Footer with Sign Out -->
-          <div class="sidebar-bottom-action">
-            <button type="button" class="nav-item-link text-danger border-0 bg-transparent w-100" (click)="showLogoutConfirm = true">
-              <i class="bi bi-box-arrow-right"></i>
-              <span>Sign Out</span>
-            </button>
-          </div>
+        <!-- Sidebar Footer with Sign Out -->
+        <div class="sidebar-bottom-action">
+          <button type="button" class="nav-item-link text-danger border-0 bg-transparent w-100" (click)="showLogoutConfirm = true" tabindex="0" role="menuitem">
+            <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+            <span>Sign Out</span>
+          </button>
+        </div>
         </aside>
 
         <!-- 3. MAIN INDEPENDENTLY SCROLLABLE CONTENT (Expands smoothly to 100% when sidebar is toggled) -->
-        <main class="app-main-content">
+        <main class="app-main-content" role="main">
           <router-outlet></router-outlet>
         </main>
       </div>
 
       <!-- Logout Confirmation Modal -->
-      <div class="modal-overlay" *ngIf="showLogoutConfirm" (click)="showLogoutConfirm = false">
+      <div class="modal-overlay" *ngIf="showLogoutConfirm" (click)="showLogoutConfirm = false" role="dialog" aria-modal="true" aria-labelledby="logout-modal-title">
         <div class="modal-card modal-sm" (click)="$event.stopPropagation()">
           <div class="modal-body p-4 text-center">
-            <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger mb-3" style="width: 52px; height: 52px; font-size: 22px;">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger mb-3" style="width: 52px; height: 52px; font-size: 22px;" aria-hidden="true">
               <i class="bi bi-box-arrow-right"></i>
             </div>
-            <h5 class="modal-title fw-bold text-dark mb-2">Confirm Sign Out</h5>
+            <h5 id="logout-modal-title" class="modal-title fw-bold text-dark mb-2">Confirm Sign Out</h5>
             <p class="text-muted small mb-4">Are you sure you want to end your current TrainMate session?</p>
             <div class="d-flex justify-content-center gap-2">
               <button type="button" class="btn btn-secondary-custom px-4" (click)="showLogoutConfirm = false">Cancel</button>
@@ -193,17 +203,43 @@ import { AuthService } from './services/auth.service';
       </div>
 
     </div>
-  `
+  `,
+  styles: [`
+    /* Add focus styles for accessibility */
+    .nav-item-link:focus,
+    .action-btn:focus,
+    .btn-primary-custom:focus,
+    .btn-secondary-custom:focus,
+    .navbar-hamburger-btn:focus {
+      outline: 2px solid #0066f5;
+      outline-offset: 2px;
+    }
+    
+    .modal-overlay:focus {
+      outline: none;
+    }
+    
+    .modal-card:focus {
+      outline: 2px solid #0066f5;
+      outline-offset: 2px;
+    }
+  `]
 })
-export class AppComponent {
+export class AppComponent implements OnInit, OnDestroy {
   isAuthPage: boolean = true;
   sidebarClosedDesktop: boolean = false;
   sidebarOpenMobile: boolean = false;
   showLogoutConfirm: boolean = false;
   currentUserRole: string = '';
   currentUserName: string = '';
+  private isMobile: boolean = false;
+  private resizeSubscription?: Subscription;
 
   constructor(private router: Router, private authService: AuthService) {
+    this.checkScreenSize();
+  }
+
+  ngOnInit(): void {
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
@@ -211,10 +247,35 @@ export class AppComponent {
       this.sidebarOpenMobile = false;
       this.syncUserInfo();
     });
+
+    // Listen for window resize to update mobile/desktop state
+    this.resizeSubscription = new Subscription();
+    // We'll use HostListener instead for simplicity
+  }
+
+  ngOnDestroy(): void {
+    if (this.resizeSubscription) {
+      this.resizeSubscription.unsubscribe();
+    }
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.checkScreenSize();
+  }
+
+  private checkScreenSize(): void {
+    const wasMobile = this.isMobile;
+    this.isMobile = window.innerWidth < 992;
+    
+    // Reset mobile sidebar state when switching to desktop
+    if (wasMobile && !this.isMobile) {
+      this.sidebarOpenMobile = false;
+    }
   }
 
   toggleSidebar(): void {
-    if (window.innerWidth < 992) {
+    if (this.isMobile) {
       this.sidebarOpenMobile = !this.sidebarOpenMobile;
     } else {
       this.sidebarClosedDesktop = !this.sidebarClosedDesktop;
@@ -222,7 +283,7 @@ export class AppComponent {
   }
 
   onNavClick(): void {
-    if (window.innerWidth < 992) {
+    if (this.isMobile) {
       this.sidebarOpenMobile = false;
     }
   }

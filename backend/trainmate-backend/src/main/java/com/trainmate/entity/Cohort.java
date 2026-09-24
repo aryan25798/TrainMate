@@ -37,6 +37,15 @@ public class Cohort {
     @Column(name = "location", nullable = false, length = 100)
     private String location;
 
+    @Column(name = "vertical", length = 100)
+    private String vertical;
+
+    @Column(name = "updated_date")
+    private LocalDateTime updatedDate;
+
+    @Column(name = "updated_by")
+    private Long updatedBy;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "coach_user_id", nullable = false)
     private User coachUser;
@@ -134,6 +143,30 @@ public class Cohort {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public String getVertical() {
+        return vertical;
+    }
+
+    public void setVertical(String vertical) {
+        this.vertical = vertical;
+    }
+
+    public LocalDateTime getUpdatedDate() {
+        return updatedDate;
+    }
+
+    public void setUpdatedDate(LocalDateTime updatedDate) {
+        this.updatedDate = updatedDate;
+    }
+
+    public Long getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(Long updatedBy) {
+        this.updatedBy = updatedBy;
     }
 
     public User getCoachUser() {

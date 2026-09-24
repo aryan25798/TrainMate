@@ -43,17 +43,8 @@ public class CoachController {
     }
 
     @PostMapping("/{coachId}/cohorts/upload")
-    public ResponseEntity<ApiResponse<CohortUploadResponse>> uploadCohortsWithId(
-            @PathVariable Long coachId,
-            @RequestParam("file") MultipartFile file
-    ) {
-        CohortUploadResponse result = coachService.uploadCohorts(coachId, file);
-        return ResponseEntity.ok(ApiResponse.success("File processed", result));
-    }
-
-    @PostMapping("/cohorts/upload")
     public ResponseEntity<ApiResponse<CohortUploadResponse>> uploadCohorts(
-            @RequestParam("coachId") Long coachId,
+            @PathVariable Long coachId,
             @RequestParam("file") MultipartFile file
     ) {
         CohortUploadResponse result = coachService.uploadCohorts(coachId, file);

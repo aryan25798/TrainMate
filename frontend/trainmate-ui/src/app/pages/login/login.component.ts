@@ -498,8 +498,8 @@ import { AuthService } from '../../services/auth.service';
   `]
 })
 export class LoginComponent implements OnInit {
-  loginId: string = 'coach01';
-  password: string = 'coach123';
+  loginId: string = '';
+  password: string = '';
   loading: boolean = false;
   errorMessage: string = '';
   infoMessage: string = '';

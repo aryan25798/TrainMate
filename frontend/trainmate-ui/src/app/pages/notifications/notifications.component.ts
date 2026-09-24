@@ -53,7 +53,7 @@ import { NotificationItem } from '../../models/models';
                   <span class="badge bg-light text-dark border small" *ngIf="m.title">{{ m.title }}</span>
                   <span *ngIf="m.isRead === false" class="badge bg-primary text-white small" style="font-size: 10px;">NEW</span>
                   <span class="text-muted small">&bull;</span>
-                  <small class="text-muted">{{ (m.createdAt || m.createdDate) | date:'medium' }}</small>
+                  <small class="text-muted">{{ getNotificationDate(m) | date:'medium' }}</small>
                 </div>
                 <p class="mb-0 text-dark fw-medium" style="font-size: 0.95rem;">{{ m.message }}</p>
               </div>
@@ -98,6 +98,12 @@ export class NotificationsComponent implements OnInit {
         }
       }
     });
+  }
+
+  getNotificationDate(notification: NotificationItem): Date | null {
+    // Handle both createdAt and createdDate field names from backend
+    const dateStr = notification.createdAt || notification.createdDate;
+    return dateStr ? new Date(dateStr) : null;
   }
 
   markAllRead(): void {

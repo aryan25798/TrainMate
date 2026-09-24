@@ -9,6 +9,8 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
 import { ReassignModalComponent } from '../../shared/reassign-modal.component';
 import { EditCohortModalComponent } from '../../shared/edit-cohort-modal.component';
 import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
+import { StatusBadgePipe } from '../../shared/pipes/status-badge.pipe';
+import { getInitials } from '../../shared/utils/helpers';
 
 @Component({
   selector: 'app-admin-cohorts',
@@ -19,7 +21,8 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
     CohortDetailsModalComponent,
     ReassignModalComponent,
     EditCohortModalComponent,
-    ConfirmModalComponent
+    ConfirmModalComponent,
+    StatusBadgePipe
   ],
   template: `
     <div>
@@ -95,16 +98,14 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
             </thead>
             <tbody>
               <tr *ngFor="let c of filteredCohorts">
-                <td class="fw-bold text-dark text-nowrap">{{ c.cohortCode }}</td>
-                <td class="text-nowrap">{{ c.serviceLine }}</td>
-                <td><span class="badge-tag">{{ c.requiredSkill }}</span></td>
-                <td class="text-nowrap">{{ c.numberOfTrainees }}</td>
-                <td class="text-nowrap">
-                  <span class="fw-semibold text-dark">{{ c.coachName || 'Unknown' }}</span>
-                </td>
-                <td class="text-nowrap">
+                <td class="fw-bold text-dark text-nowrap" data-label="Cohort Code">{{ c.cohortCode }}</td>
+                <td class="text-nowrap" data-label="Service Line">{{ c.serviceLine }}</td>
+                <td data-label="Required Skill"><span class="badge-tag">{{ c.requiredSkill }}</span></td>
+                <td class="text-nowrap" data-label="Trainees">{{ c.numberOfTrainees }}</td>
+                <td class="text-nowrap" data-label="Coach"><span class="fw-semibold text-dark">{{ c.coachName || 'Unknown' }}</span></td>
+                <td class="text-nowrap" data-label="Assigned Trainer">
                   <div *ngIf="c.assignedTrainerName" class="d-flex align-items-center gap-2">
-                    <span class="trainer-avatar">{{ c.assignedTrainerName.charAt(0) }}</span>
+                    <span class="trainer-avatar">{{ getInitials(c.assignedTrainerName) }}</span>
                     <div>
                       <div class="fw-semibold text-dark" style="font-size: 0.885rem;">{{ c.assignedTrainerName }}</div>
                       <span *ngIf="c.allocationScore" class="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0" style="font-size: 0.7rem;">
@@ -116,16 +117,17 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
                     Unassigned
                   </span>
                 </td>
-                <td class="text-nowrap">
+                <td class="text-nowrap" data-label="Duration">
                   <div class="fw-medium small text-dark">{{ c.startDate }}</div>
                   <small class="text-muted">{{ c.endDate }}</small>
                 </td>
-                <td class="text-nowrap">
+                <td class="text-nowrap" data-label="Status">
                   <select
                     class="status-select"
-                    [ngClass]="'status-' + c.status.toLowerCase()"
+                    [ngClass]="'status-' + (c.status | statusBadge)"
                     [ngModel]="c.status"
                     (ngModelChange)="onStatusChange(c, $event)"
+                    [attr.aria-label]="'Change status for cohort ' + c.cohortCode"
                   >
                     <option value="PENDING">PENDING</option>
                     <option value="ASSIGNED">ASSIGNED</option>
@@ -134,28 +136,29 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
                     <option value="CANCELLED">CANCELLED</option>
                   </select>
                 </td>
-                <td class="text-end text-nowrap">
-                  <div class="action-btn-group">
-                    <button class="action-btn btn-view" (click)="selectedCohortForDetails = c" title="View Details & Score Breakdown">
-                      <i class="bi bi-eye"></i>
+                <td class="text-end text-nowrap action-cell" data-label="Actions">
+                  <div class="action-btn-group" role="group" [attr.aria-label]="'Actions for cohort ' + c.cohortCode">
+                    <button class="action-btn btn-view" (click)="selectedCohortForDetails = c" title="View Details & Score Breakdown" aria-label="View cohort details">
+                      <i class="bi bi-eye" aria-hidden="true"></i>
                     </button>
-                    <button class="action-btn btn-reassign" (click)="selectedCohortForReassign = c" title="Manual Trainer Reassignment">
-                      <i class="bi bi-arrow-left-right"></i>
+                    <button class="action-btn btn-reassign" (click)="selectedCohortForReassign = c" title="Manual Trainer Reassignment" aria-label="Reassign trainer">
+                      <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
                     </button>
-                    <button class="action-btn btn-edit" (click)="editingCohort = c" title="Edit Cohort">
-                      <i class="bi bi-pencil"></i>
+                    <button class="action-btn btn-edit" (click)="editingCohort = c" title="Edit Cohort" aria-label="Edit cohort">
+                      <i class="bi bi-pencil" aria-hidden="true"></i>
                     </button>
                     <button
                       class="action-btn btn-reallocate"
                       title="Re-run 100-Point Allocation Engine"
                       (click)="onReallocate(c)"
                       [disabled]="reallocatingId === c.id"
+                      aria-label="Reallocate trainer"
                     >
-                      <span *ngIf="reallocatingId === c.id" class="spinner-border spinner-border-sm" style="width: 14px; height: 14px;"></span>
-                      <i *ngIf="reallocatingId !== c.id" class="bi bi-arrow-repeat"></i>
+                      <span *ngIf="reallocatingId === c.id" class="spinner-border spinner-border-sm" style="width: 14px; height: 14px;" aria-hidden="true"></span>
+                      <i *ngIf="reallocatingId !== c.id" class="bi bi-arrow-repeat" aria-hidden="true"></i>
                     </button>
-                    <button class="action-btn btn-delete" (click)="cohortToDelete = c" title="Delete Cohort">
-                      <i class="bi bi-trash"></i>
+                    <button class="action-btn btn-delete" (click)="cohortToDelete = c" title="Delete Cohort" aria-label="Delete cohort">
+                      <i class="bi bi-trash" aria-hidden="true"></i>
                     </button>
                   </div>
                 </td>
@@ -176,12 +179,12 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
           <ul class="pagination pagination-sm justify-content-center mb-0">
             <li class="page-item" [class.disabled]="pagedData.first">
               <button class="page-link" (click)="onPageChange(0)" [disabled]="pagedData.first" aria-label="First">
-                <i class="bi bi-chevron-double-left"></i>
+                <i class="bi bi-chevron-double-left" aria-hidden="true"></i>
               </button>
             </li>
             <li class="page-item" [class.disabled]="pagedData.first">
               <button class="page-link" (click)="onPageChange(pagedData.number - 1)" [disabled]="pagedData.first" aria-label="Previous">
-                <i class="bi bi-chevron-left"></i>
+                <i class="bi bi-chevron-left" aria-hidden="true"></i>
               </button>
             </li>
             <li class="page-item" *ngFor="let page of getPageNumbers()" [class.active]="page === pagedData.number">
@@ -189,12 +192,12 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
             </li>
             <li class="page-item" [class.disabled]="pagedData.last">
               <button class="page-link" (click)="onPageChange(pagedData.number + 1)" [disabled]="pagedData.last" aria-label="Next">
-                <i class="bi bi-chevron-right"></i>
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
               </button>
             </li>
             <li class="page-item" [class.disabled]="pagedData.last">
               <button class="page-link" (click)="onPageChange(pagedData.totalPages - 1)" [disabled]="pagedData.last" aria-label="Last">
-                <i class="bi bi-chevron-double-right"></i>
+                <i class="bi bi-chevron-double-right" aria-hidden="true"></i>
               </button>
             </li>
           </ul>
@@ -426,16 +429,5 @@ export class AdminCohortsComponent implements OnInit {
     });
   }
 
-  getStatusBadgeClass(status: string): string {
-    switch (status) {
-      case 'ASSIGNED': return 'badge-assigned';
-      case 'UNASSIGNED': return 'badge-unassigned';
-      case 'PENDING': return 'badge-pending';
-      case 'PROCESSING': return 'badge-processing';
-      case 'ACTIVE': return 'badge-active';
-      case 'COMPLETED': return 'badge-completed';
-      case 'CANCELLED': return 'badge-secondary';
-      default: return 'badge-secondary';
-    }
-  }
+  protected readonly getInitials = getInitials;
 }

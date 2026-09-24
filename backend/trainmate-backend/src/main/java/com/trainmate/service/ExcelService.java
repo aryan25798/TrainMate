@@ -19,7 +19,6 @@ import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
 import java.util.*;
 
 @Service
@@ -37,6 +36,19 @@ public class ExcelService {
             DateTimeFormatter.ofPattern("dd/MM/yyyy"),
             DateTimeFormatter.ofPattern("yyyy/MM/dd")
     };
+
+    // Expected header names (case-insensitive)
+    private static final Map<String, Integer> REQUIRED_HEADERS = Map.ofEntries(
+            Map.entry("cohort code", 0),
+            Map.entry("service line", 1),
+            Map.entry("stream", 2),
+            Map.entry("required skill", 3),
+            Map.entry("number of trainees", 4),
+            Map.entry("start date", 5),
+            Map.entry("end date", 6),
+            Map.entry("vertical", 7),
+            Map.entry("location", 8)
+    );
 
     public ExcelService(CohortRepository cohortRepository, TrainerAllocationService trainerAllocationService, CohortService cohortService) {
         this.cohortRepository = cohortRepository;
@@ -68,9 +80,23 @@ public class ExcelService {
             Sheet sheet = workbook.getSheetAt(0);
             Iterator<Row> rowIterator = sheet.iterator();
 
-            // Skip header row
+            // Read header row and map column indices
+            Map<String, Integer> headerMap = new HashMap<>();
             if (rowIterator.hasNext()) {
-                rowIterator.next();
+                Row headerRow = rowIterator.next();
+                for (Cell cell : headerRow) {
+                    String header = getCellStringValue(cell);
+                    if (header != null) {
+                        headerMap.put(header.trim().toLowerCase(), cell.getColumnIndex());
+                    }
+                }
+            }
+
+            // Validate required headers exist
+            for (String requiredHeader : REQUIRED_HEADERS.keySet()) {
+                if (!headerMap.containsKey(requiredHeader)) {
+                    throw new InvalidFileException("Missing required column: " + requiredHeader);
+                }
             }
 
             int rowNumber = 1; // 1-based index (Header is row 1, data starts row 2)
@@ -86,16 +112,16 @@ public class ExcelService {
 
                 totalRows++;
 
-                // Read columns
-                String cohortCode = getCellStringValue(row.getCell(0));
-                String serviceLine = getCellStringValue(row.getCell(1));
-                String stream = getCellStringValue(row.getCell(2));
-                String requiredSkill = getCellStringValue(row.getCell(3));
-                String traineesStr = getCellStringValue(row.getCell(4));
-                LocalDate startDate = getCellDateValue(row.getCell(5));
-                LocalDate endDate = getCellDateValue(row.getCell(6));
-                String vertical = getCellStringValue(row.getCell(7));
-                String location = getCellStringValue(row.getCell(8));
+                // Read columns using header map
+                String cohortCode = getCellStringValue(row.getCell(headerMap.get("cohort code")));
+                String serviceLine = getCellStringValue(row.getCell(headerMap.get("service line")));
+                String stream = getCellStringValue(row.getCell(headerMap.get("stream")));
+                String requiredSkill = getCellStringValue(row.getCell(headerMap.get("required skill")));
+                String traineesStr = getCellStringValue(row.getCell(headerMap.get("number of trainees")));
+                LocalDate startDate = getCellDateValue(row.getCell(headerMap.get("start date")));
+                LocalDate endDate = getCellDateValue(row.getCell(headerMap.get("end date")));
+                String vertical = getCellStringValue(row.getCell(headerMap.get("vertical")));
+                String location = getCellStringValue(row.getCell(headerMap.get("location")));
 
                 boolean rowHasError = false;
 
@@ -166,6 +192,7 @@ public class ExcelService {
                     cohort.setTraineeCount(trainees);
                     cohort.setStartDate(startDate);
                     cohort.setEndDate(endDate);
+                    cohort.setVertical(vertical != null && !vertical.trim().isEmpty() ? vertical.trim() : "General");
                     cohort.setLocation(location != null && !location.trim().isEmpty() ? location.trim() : "Chennai");
                     cohort.setCoachUser(coachUser);
                     cohort.setStatus(CohortStatus.PENDING);
@@ -213,7 +240,7 @@ public class ExcelService {
             headerCellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             headerCellStyle.setAlignment(HorizontalAlignment.CENTER);
 
-            // Columns matching FRD Section 15
+            // Columns matching FRD Section 15 (without Coach Name - it's derived from logged-in user)
             String[] headers = {
                     "Cohort Code",
                     "Service Line",
@@ -223,8 +250,7 @@ public class ExcelService {
                     "Start Date",
                     "End Date",
                     "Vertical",
-                    "Location",
-                    "Coach Name"
+                    "Location"
             };
 
             Row headerRow = sheet.createRow(0);
@@ -236,9 +262,9 @@ public class ExcelService {
 
             // Sample rows matching FRD Section 15 & 83
             String[][] sampleData = {
-                    {"QEA26SD004", "QEA", "Software Development", "Java, Spring Boot", "50", "01-Sep-2026", "30-Nov-2026", "Healthcare", "Chennai", "Amit Sharma"},
-                    {"QEA26SD005", "QEA", "Frontend Engineering", "Angular", "40", "05-Sep-2026", "30-Nov-2026", "Banking", "Chennai", "Amit Sharma"},
-                    {"QEA26SD006", "QEA", "Enterprise Java", "Java, SQL", "35", "10-Sep-2026", "10-Dec-2026", "Insurance", "Pune", "Amit Sharma"}
+                    {"QEA26SD004", "QEA", "Software Development", "Java, Spring Boot", "50", "01-Sep-2026", "30-Nov-2026", "Healthcare", "Chennai"},
+                    {"QEA26SD005", "QEA", "Frontend Engineering", "Angular", "40", "05-Sep-2026", "30-Nov-2026", "Banking", "Chennai"},
+                    {"QEA26SD006", "QEA", "Enterprise Java", "Java, SQL", "35", "10-Sep-2026", "10-Dec-2026", "Insurance", "Pune"}
             };
 
             int rowIdx = 1;

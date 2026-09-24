@@ -48,14 +48,18 @@ public class CohortService {
      */
     @Transactional
     public void deleteCohort(Long cohortId) {
-        Cohort cohort = cohortRepository.findById(cohortId)
+        // Lock cohort for update
+        Cohort cohort = cohortRepository.findByIdForUpdate(cohortId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cohort not found with ID: " + cohortId));
 
-        // Release trainer workload if assigned
+        // Release trainer workload if assigned (with lock)
         if (cohort.getAssignedTrainer() != null) {
             Trainer trainer = cohort.getAssignedTrainer();
-            trainer.setCurrentWorkload(Math.max(0, trainer.getCurrentWorkload() - 1));
-            trainerRepository.save(trainer);
+            Trainer lockedTrainer = trainerRepository.findByIdForUpdate(trainer.getId()).orElse(null);
+            if (lockedTrainer != null) {
+                lockedTrainer.setCurrentWorkload(Math.max(0, lockedTrainer.getCurrentWorkload() - 1));
+                trainerRepository.save(lockedTrainer);
+            }
         }
 
         // Clean up linked notifications
@@ -149,7 +153,7 @@ public class CohortService {
         dto.setNumberOfTrainees(c.getTraineeCount());
         dto.setStartDate(c.getStartDate());
         dto.setEndDate(c.getEndDate());
-        dto.setVertical("General");
+        dto.setVertical(c.getVertical() != null ? c.getVertical() : "General");
         dto.setLocation(c.getLocation());
         dto.setStatus(c.getStatus().name());
         dto.setCreatedAt(c.getCreatedDate());

@@ -34,6 +34,12 @@ public class Trainer {
     @Column(name = "max_workload", nullable = false)
     private Integer maxWorkload = 5;
 
+    @Column(name = "updated_date")
+    private LocalDateTime updatedDate;
+
+    @Column(name = "updated_by")
+    private Long updatedBy;
+
     public Trainer() {}
 
     public Long getId() {
@@ -98,5 +104,21 @@ public class Trainer {
 
     public void setMaxWorkload(Integer maxWorkload) {
         this.maxWorkload = maxWorkload;
+    }
+
+    public LocalDateTime getUpdatedDate() {
+        return updatedDate;
+    }
+
+    public void setUpdatedDate(LocalDateTime updatedDate) {
+        this.updatedDate = updatedDate;
+    }
+
+    public Long getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(Long updatedBy) {
+        this.updatedBy = updatedBy;
     }
 }

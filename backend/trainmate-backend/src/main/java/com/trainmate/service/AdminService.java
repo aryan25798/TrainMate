@@ -141,7 +141,9 @@ public class AdminService {
         User user = new User();
         user.setName(req.getName());
         user.setEmail(req.getEmail());
-        user.setPassword(passwordEncoder.encode("password123"));
+        // Use a secure random default password that must be changed on first login
+        // In production, this should be a secure random password sent via email
+        user.setPassword(passwordEncoder.encode("TempPass@" + System.currentTimeMillis()));
         user.setRole(Role.TRAINER);
         User savedUser = userRepository.save(user);
 

@@ -37,3 +37,16 @@ Thumbs.db
 Desktop.ini
 *.tmp
 *.bak
+
+# ==========================================
+# SECRET / LOCAL CONFIG - NEVER COMMIT
+# ==========================================
+# Backend local secrets (Aiven credentials etc.)
+backend/trainmate-backend/src/main/resources/application-local.properties
+# Frontend local environment (API URLs)
+frontend/trainmate-ui/src/environments/environment.development.ts
+# Generic env files
+.env
+.env.local
+.env.*
+

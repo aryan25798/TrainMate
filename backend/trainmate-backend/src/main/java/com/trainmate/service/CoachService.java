@@ -89,6 +89,7 @@ public class CoachService {
         cohort.setStartDate(req.getStartDate());
         cohort.setEndDate(req.getEndDate());
         cohort.setLocation(req.getLocation() != null && !req.getLocation().trim().isEmpty() ? req.getLocation().trim() : "Chennai");
+        cohort.setVertical(req.getVertical() != null && !req.getVertical().trim().isEmpty() ? req.getVertical().trim() : "General");
         cohort.setCoachUser(coachUser);
         cohort.setStatus(CohortStatus.PENDING);
 

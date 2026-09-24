@@ -17,11 +17,12 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final TrainerRepository trainerRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder;
 
-    public AuthService(UserRepository userRepository, TrainerRepository trainerRepository) {
+    public AuthService(UserRepository userRepository, TrainerRepository trainerRepository, BCryptPasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.trainerRepository = trainerRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public LoginResponse login(LoginRequest request) {
@@ -48,17 +49,6 @@ public class AuthService {
         }
 
         if (!matches) {
-            String email = user.getEmail() != null ? user.getEmail().toLowerCase() : "";
-            if (("coach01@cognizant.com".equals(email) || "coach02@cognizant.com".equals(email)) && ("coach123".equals(rawPassword) || "password123".equals(rawPassword))) {
-                matches = true;
-            } else if (email.startsWith("trainer") && ("trainer123".equals(rawPassword) || "password123".equals(rawPassword))) {
-                matches = true;
-            } else if (email.startsWith("admin") && ("admin123".equals(rawPassword) || "password123".equals(rawPassword))) {
-                matches = true;
-            }
-        }
-
-        if (!matches) {
             return LoginResponse.failure("Invalid login ID or password");
         }
 
@@ -66,7 +56,7 @@ public class AuthService {
         Long trainerId = null;
 
         if (user.getRole() == Role.COACH) {
-            coachId = user.getId(); // Coach is user directly
+            coachId = user.getId();
         } else if (user.getRole() == Role.TRAINER) {
             trainerId = trainerRepository.findByUserId(user.getId()).map(Trainer::getId).orElse(null);
         }

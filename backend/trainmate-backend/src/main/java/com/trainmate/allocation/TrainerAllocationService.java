@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -35,25 +36,30 @@ public class TrainerAllocationService {
 
     /**
      * Executes automatic allocation for a cohort in a single transactional operation.
+     * Uses pessimistic locking to prevent race conditions.
      */
     @Transactional
     public TrainerScore allocateTrainer(Cohort cohort) {
+        // Lock cohort for update to prevent concurrent modifications
+        Cohort lockedCohort = cohortRepository.findByIdForUpdate(cohort.getId())
+                .orElseThrow(() -> new IllegalStateException("Cohort no longer available: " + cohort.getId()));
+
         List<Trainer> allTrainers = trainerRepository.findAll();
         List<TrainerScore> eligibleScores = new ArrayList<>();
 
         for (Trainer trainer : allTrainers) {
-            TrainerScore score = allocationScorer.evaluate(trainer, cohort);
+            TrainerScore score = allocationScorer.evaluate(trainer, lockedCohort);
             if (score.isEligible()) {
                 eligibleScores.add(score);
             }
         }
 
         if (eligibleScores.isEmpty()) {
-            cohort.setStatus(CohortStatus.UNASSIGNED);
-            cohort.setAssignedTrainer(null);
-            cohortRepository.save(cohort);
+            lockedCohort.setStatus(CohortStatus.UNASSIGNED);
+            lockedCohort.setAssignedTrainer(null);
+            cohortRepository.save(lockedCohort);
 
-            notificationService.notifyAllocationFailed(cohort);
+            notificationService.notifyAllocationFailed(lockedCohort);
 
             TrainerScore noMatch = new TrainerScore(null);
             noMatch.setEligible(false);
@@ -61,54 +67,54 @@ public class TrainerAllocationService {
             return noMatch;
         }
 
-        // Sort descending: best candidate first
-        Collections.sort(eligibleScores);
-        TrainerScore winner = eligibleScores.get(0);
-        Trainer winnerTrainer = winner.getTrainer();
+        // Sort descending: best candidate first (by score, then by lower workload as tiebreaker)
+        eligibleScores.sort(Comparator
+                .comparingDouble(TrainerScore::getTotalScore).reversed()
+                .thenComparingInt(s -> s.getTrainer().getCurrentWorkload()));
 
-        // Re-fetch with pessimistic lock to prevent race conditions
-        Trainer lockedTrainer = trainerRepository.findByIdForUpdate(winnerTrainer.getId())
-                .orElseThrow(() -> new IllegalStateException("Trainer no longer available: " + winnerTrainer.getId()));
+        TrainerScore winner = null;
+        Trainer lockedWinner = null;
 
-        // Double-check eligibility after locking
-        TrainerScore recheckScore = allocationScorer.evaluate(lockedTrainer, cohort);
-        if (!recheckScore.isEligible()) {
-            // Try next best trainer
-            for (int i = 1; i < eligibleScores.size(); i++) {
-                TrainerScore next = eligibleScores.get(i);
-                Trainer nextTrainer = trainerRepository.findByIdForUpdate(next.getTrainer().getId()).orElse(null);
-                if (nextTrainer != null) {
-                    TrainerScore nextRecheck = allocationScorer.evaluate(nextTrainer, cohort);
-                    if (nextRecheck.isEligible()) {
-                        winner = nextRecheck;
-                        lockedTrainer = nextTrainer;
-                        break;
-                    }
-                }
+        // Try each eligible trainer in order until one can be locked and assigned
+        for (TrainerScore candidate : eligibleScores) {
+            Trainer candidateTrainer = candidate.getTrainer();
+            Trainer lockedCandidate = trainerRepository.findByIdForUpdate(candidateTrainer.getId()).orElse(null);
+            if (lockedCandidate == null) {
+                continue; // Trainer was deleted concurrently
             }
-            if (!recheckScore.isEligible() && winner.getTrainer().getId().equals(winnerTrainer.getId())) {
-                cohort.setStatus(CohortStatus.UNASSIGNED);
-                cohort.setAssignedTrainer(null);
-                cohortRepository.save(cohort);
-                notificationService.notifyAllocationFailed(cohort);
-                TrainerScore noMatch = new TrainerScore(null);
-                noMatch.setEligible(false);
-                noMatch.setIneligibilityReason("No eligible trainer available after re-check");
-                return noMatch;
+
+            // Re-evaluate eligibility with locked trainer (workload may have changed)
+            TrainerScore recheckScore = allocationScorer.evaluate(lockedCandidate, lockedCohort);
+            if (recheckScore.isEligible()) {
+                winner = recheckScore;
+                lockedWinner = lockedCandidate;
+                break;
             }
         }
 
+        if (winner == null || lockedWinner == null) {
+            lockedCohort.setStatus(CohortStatus.UNASSIGNED);
+            lockedCohort.setAssignedTrainer(null);
+            cohortRepository.save(lockedCohort);
+            notificationService.notifyAllocationFailed(lockedCohort);
+
+            TrainerScore noMatch = new TrainerScore(null);
+            noMatch.setEligible(false);
+            noMatch.setIneligibilityReason("No eligible trainer available after re-check");
+            return noMatch;
+        }
+
         // Assign directly to cohort
-        cohort.setAssignedTrainer(lockedTrainer);
-        cohort.setStatus(CohortStatus.ASSIGNED);
-        cohortRepository.save(cohort);
+        lockedCohort.setAssignedTrainer(lockedWinner);
+        lockedCohort.setStatus(CohortStatus.ASSIGNED);
+        cohortRepository.save(lockedCohort);
 
         // Increment trainer workload
-        lockedTrainer.setCurrentWorkload(lockedTrainer.getCurrentWorkload() + 1);
-        trainerRepository.save(lockedTrainer);
+        lockedWinner.setCurrentWorkload(lockedWinner.getCurrentWorkload() + 1);
+        trainerRepository.save(lockedWinner);
 
         // Notify Coach and Trainer via internal mail
-        notificationService.notifyTrainerAssigned(cohort, lockedTrainer);
+        notificationService.notifyTrainerAssigned(lockedCohort, lockedWinner);
 
         return winner;
     }

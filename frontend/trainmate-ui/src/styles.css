@@ -18,6 +18,7 @@
   --radius-lg: 14px;
   --radius-md: 10px;
   --radius-sm: 6px;
+  --navbar-height: 60px;
 }
 
 *, *::before, *::after {
@@ -36,9 +37,23 @@ html, body {
   letter-spacing: -0.01em;
 }
 
+/* Fix mobile viewport height (address bar hide/show) */
+@supports (height: 100dvh) {
+  .login-container {
+    height: 100dvh;
+  }
+  .enterprise-app {
+    height: 100dvh;
+  }
+  .app-body {
+    height: calc(100dvh - var(--navbar-height));
+  }
+}
+
 /* Dedicated Login Scroll Container */
 .login-container {
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow-y: auto;
   overflow-x: hidden;
@@ -50,6 +65,7 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
   background-color: var(--content-bg);
@@ -172,7 +188,8 @@ html, body {
 /* 2. APPLICATION BODY AREA (Height = 100vh - 60px) */
 .app-body {
   display: flex;
-  height: calc(100vh - 60px);
+  height: calc(100vh - var(--navbar-height));
+  height: calc(100dvh - var(--navbar-height));
   width: 100vw;
   overflow: hidden;
   position: relative;
@@ -334,7 +351,7 @@ html, body {
 @media (max-width: 991.98px) {
   .app-sidebar {
     position: fixed;
-    top: 60px;
+    top: var(--navbar-height);
     bottom: 0;
     left: 0;
     width: 270px !important;
@@ -351,10 +368,11 @@ html, body {
   .mobile-backdrop.show {
     display: block;
     position: fixed;
-    top: 60px;
+    top: var(--navbar-height);
     left: 0;
     width: 100vw;
-    height: calc(100vh - 60px);
+    height: calc(100vh - var(--navbar-height));
+    height: calc(100dvh - var(--navbar-height));
     background: rgba(7, 12, 36, 0.65);
     backdrop-filter: blur(4px);
     z-index: 1045;
@@ -661,6 +679,67 @@ html, body {
 
 .table-hover tbody tr:hover {
   background-color: #f8fafc;
+}
+
+/* Responsive table: card view on mobile */
+@media (max-width: 767.98px) {
+  .table-responsive {
+    border-radius: var(--radius-lg);
+  }
+  
+  .table-responsive .table {
+    min-width: 100%;
+  }
+  
+  .table-responsive .table thead {
+    display: none;
+  }
+  
+  .table-responsive .table tbody tr {
+    display: block;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  }
+  
+  .table-responsive .table tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    border-radius: 0;
+    font-size: 0.875rem;
+  }
+  
+  .table-responsive .table tbody td:last-child {
+    border-bottom: none;
+    padding-top: 1rem;
+  }
+  
+  .table-responsive .table tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #64748b;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .table-responsive .table tbody td.action-cell {
+    justify-content: flex-end;
+  }
+  
+  .table-responsive .table tbody td.action-cell::before {
+    display: none;
+  }
+  
+  .action-btn-group {
+    margin: 0 auto;
+  }
 }
 
 /* Status Badges */
