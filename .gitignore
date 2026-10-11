@@ -42,7 +42,7 @@ Desktop.ini
 # SECRET / LOCAL CONFIG - NEVER COMMIT
 # ==========================================
 # Backend local secrets (Aiven credentials etc.)
-backend/trainmate-backend/src/main/resources/application-local.properties
+# backend/trainmate-backend/src/main/resources/application-local.properties
 # Generic env files
 .env
 .env.local
