@@ -31,26 +31,35 @@ public class AuthService {
         }
 
         String input = request.getLoginId().trim();
-        Optional<User> userOpt = userRepository.findByIdentifier(input);
-        if (userOpt.isEmpty()) {
+        java.util.List<User> matchingUsers = userRepository.findByIdentifier(input);
+        if (matchingUsers == null || matchingUsers.isEmpty()) {
             return LoginResponse.failure("Invalid login ID or password");
         }
 
-        User user = userOpt.get();
         String rawPassword = request.getPassword().trim();
-        String storedPassword = user.getPassword();
-        boolean matches = false;
-        if (storedPassword != null) {
-            if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2y$")) {
-                matches = passwordEncoder.matches(rawPassword, storedPassword);
-            } else {
-                matches = rawPassword.equals(storedPassword.trim());
+        User matchedUser = null;
+
+        for (User candidate : matchingUsers) {
+            String storedPassword = candidate.getPassword();
+            if (storedPassword != null) {
+                boolean matches = false;
+                if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2y$")) {
+                    matches = passwordEncoder.matches(rawPassword, storedPassword);
+                } else {
+                    matches = rawPassword.equals(storedPassword.trim());
+                }
+                if (matches) {
+                    matchedUser = candidate;
+                    break;
+                }
             }
         }
 
-        if (!matches) {
+        if (matchedUser == null) {
             return LoginResponse.failure("Invalid login ID or password");
         }
+
+        User user = matchedUser;
 
         Long coachId = null;
         Long trainerId = null;

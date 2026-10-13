@@ -142,7 +142,8 @@ public class CohortService {
 
         // Run allocation engine
         trainerAllocationService.allocateTrainer(cohort);
-        return mapToResponse(cohort);
+        Cohort refreshedCohort = cohortRepository.findById(cohortId).orElse(cohort);
+        return mapToResponse(refreshedCohort);
     }
 
     public CohortResponse mapToResponse(Cohort c) {
@@ -159,7 +160,7 @@ public class CohortService {
         dto.setLocation(c.getLocation());
         dto.setStatus(c.getStatus().name());
         dto.setCreatedAt(c.getCreatedDate());
-        dto.setUpdatedAt(c.getCreatedDate());
+        dto.setUpdatedAt(c.getUpdatedDate() != null ? c.getUpdatedDate() : c.getCreatedDate());
 
         // Coach info
         if (c.getCoachUser() != null) {

@@ -69,6 +69,14 @@ public class Cohort {
         if (status == null) {
             status = CohortStatus.PENDING;
         }
+        if (updatedDate == null) {
+            updatedDate = createdDate;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedDate = LocalDateTime.now();
     }
 
     public Cohort() {}

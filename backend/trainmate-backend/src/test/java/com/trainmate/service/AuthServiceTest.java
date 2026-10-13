@@ -39,7 +39,7 @@ class AuthServiceTest {
 
     @Test
     void testLoginSuccess_Coach() {
-        when(userRepository.findByIdentifier("coach01")).thenReturn(Optional.of(coachUser));
+        when(userRepository.findByIdentifier("coach01")).thenReturn(java.util.List.of(coachUser));
 
         LoginResponse response = authService.login(new LoginRequest("coach01", "password123"));
 
@@ -52,7 +52,7 @@ class AuthServiceTest {
 
     @Test
     void testLoginWrongPassword() {
-        when(userRepository.findByIdentifier("coach01")).thenReturn(Optional.of(coachUser));
+        when(userRepository.findByIdentifier("coach01")).thenReturn(java.util.List.of(coachUser));
 
         LoginResponse response = authService.login(new LoginRequest("coach01", "wrongpassword"));
 
@@ -61,7 +61,7 @@ class AuthServiceTest {
 
     @Test
     void testLoginUserNotFound() {
-        when(userRepository.findByIdentifier("unknown")).thenReturn(Optional.empty());
+        when(userRepository.findByIdentifier("unknown")).thenReturn(java.util.Collections.emptyList());
 
         LoginResponse response = authService.login(new LoginRequest("unknown", "pass"));
 

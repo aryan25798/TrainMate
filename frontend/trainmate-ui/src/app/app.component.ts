@@ -278,6 +278,10 @@ export class AppComponent implements OnInit, OnDestroy {
       this.syncUserInfo();
     });
 
+    this.notificationService.unreadCount$.subscribe(count => {
+      this.unreadCount = count;
+    });
+
     // Listen for window resize to update mobile/desktop state
     this.resizeSubscription = new Subscription();
     // We'll use HostListener instead for simplicity
