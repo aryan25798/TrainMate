@@ -167,6 +167,16 @@ export class EditCohortModalComponent implements OnInit {
   }
 
   onSave(): void {
+    if (!this.formData.cohortCode || !this.formData.requiredSkill || !this.formData.startDate || !this.formData.endDate) {
+      this.errorMessage = 'Please complete all required fields.';
+      return;
+    }
+
+    if (new Date(this.formData.endDate) < new Date(this.formData.startDate)) {
+      this.errorMessage = 'End date cannot be earlier than start date.';
+      return;
+    }
+
     this.isSubmitting = true;
     this.errorMessage = '';
 

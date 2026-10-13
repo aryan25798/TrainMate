@@ -17,6 +17,12 @@ import { AuthService } from './services/auth.service';
     <!-- Global Loading Spinner -->
     <app-loading-spinner></app-loading-spinner>
 
+    <!-- Global Offline Warning Banner -->
+    <div *ngIf="isOffline" class="offline-banner" role="alert">
+      <i class="bi bi-wifi-off me-2"></i>
+      <span>You appear to be offline. Please check your internet connection.</span>
+    </div>
+
     <!-- If on Login page, show full-screen scroll container -->
     <div *ngIf="isAuthPage" class="login-container">
       <router-outlet></router-outlet>
@@ -223,6 +229,22 @@ import { AuthService } from './services/auth.service';
       outline: 2px solid #0066f5;
       outline-offset: 2px;
     }
+
+    .offline-banner {
+      background: #dc2626;
+      color: #ffffff;
+      padding: 0.5rem 1rem;
+      text-align: center;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: sticky;
+      top: 0;
+      z-index: 99999;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35);
+    }
   `]
 })
 export class AppComponent implements OnInit, OnDestroy {
@@ -232,6 +254,7 @@ export class AppComponent implements OnInit, OnDestroy {
   showLogoutConfirm: boolean = false;
   currentUserRole: string = '';
   currentUserName: string = '';
+  isOffline: boolean = typeof navigator !== 'undefined' ? !navigator.onLine : false;
   private isMobile: boolean = false;
   private resizeSubscription?: Subscription;
 
@@ -262,6 +285,16 @@ export class AppComponent implements OnInit, OnDestroy {
   @HostListener('window:resize')
   onResize(): void {
     this.checkScreenSize();
+  }
+
+  @HostListener('window:offline')
+  onOffline(): void {
+    this.isOffline = true;
+  }
+
+  @HostListener('window:online')
+  onOnline(): void {
+    this.isOffline = false;
   }
 
   private checkScreenSize(): void {

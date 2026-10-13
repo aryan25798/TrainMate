@@ -32,6 +32,20 @@ import { AuthService } from '../../services/auth.service';
           <span>{{ infoMessage }}</span>
         </div>
 
+        <!-- Render Free Tier Cold-Start Indicator -->
+        <div class="coldstart-card mb-3" *ngIf="isColdStarting">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <div class="spinner-grow spinner-grow-sm text-primary flex-shrink-0" role="status"></div>
+            <span class="fw-bold small text-dark">Waking up secure cloud server...</span>
+          </div>
+          <p class="small text-muted mb-2 lh-sm">
+            Render free-tier service is spinning up (~30-45s on first visit). Hang tight!
+          </p>
+          <div class="progress" style="height: 4px; border-radius: 4px; overflow: hidden; background: #e2e8f0;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary w-100"></div>
+          </div>
+        </div>
+
         <!-- Form -->
         <form (ngSubmit)="onLogin()" autocomplete="on">
           
@@ -232,6 +246,14 @@ import { AuthService } from '../../services/auth.service';
       background-color: #f0fdf4;
       border: 1px solid #bbf7d0;
       color: #166534;
+    }
+
+    .coldstart-card {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      animation: fadeInCard 0.2s ease;
     }
 
     /* Fields */
@@ -501,17 +523,22 @@ export class LoginComponent implements OnInit {
   loginId: string = '';
   password: string = '';
   loading: boolean = false;
+  isColdStarting: boolean = false;
   errorMessage: string = '';
   infoMessage: string = '';
   showPassword: boolean = false;
   rememberMe: boolean = true;
   showDemoHints: boolean = false;
+  private coldStartTimer: any;
 
   constructor(private authService: AuthService, private router: Router) {}
 
   ngOnInit(): void {
     if (this.authService.isLoggedIn()) {
       this.authService.redirectBasedOnRole();
+    } else {
+      // Pre-warm backend container early so Render starts waking up immediately
+      this.authService.prewarmBackend();
     }
   }
 
@@ -535,15 +562,26 @@ export class LoginComponent implements OnInit {
     }
 
     this.loading = true;
+    this.isColdStarting = false;
     this.errorMessage = '';
     this.infoMessage = '';
+
+    // If request takes > 3.2s, display the Render waking-up banner
+    clearTimeout(this.coldStartTimer);
+    this.coldStartTimer = setTimeout(() => {
+      if (this.loading) {
+        this.isColdStarting = true;
+      }
+    }, 3200);
 
     this.authService.login({
       loginId: this.loginId.trim(),
       password: this.password
     }).subscribe({
       next: (res) => {
+        clearTimeout(this.coldStartTimer);
         this.loading = false;
+        this.isColdStarting = false;
         if (res.success) {
           this.authService.redirectBasedOnRole();
         } else {
@@ -551,8 +589,14 @@ export class LoginComponent implements OnInit {
         }
       },
       error: (err) => {
+        clearTimeout(this.coldStartTimer);
         this.loading = false;
-        this.errorMessage = err.error?.message || 'Authentication failed. Please verify credentials or connection.';
+        this.isColdStarting = false;
+        if (err.status === 0) {
+          this.errorMessage = 'The cloud server is still initializing from cold start. Please click "Sign in" again.';
+        } else {
+          this.errorMessage = err.error?.message || 'Authentication failed. Please verify credentials or connection.';
+        }
       }
     });
   }

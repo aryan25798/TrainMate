@@ -403,9 +403,22 @@ html, body {
     grid-template-columns: 1fr;
   }
 
-  .modal-card {
-    max-width: 95vw;
-    margin: 0.5rem;
+  .page-header {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 0.85rem;
+  }
+
+  .page-header > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .page-header > div:last-child .btn {
+    flex: 1 1 auto;
+    justify-content: center;
   }
 
   .nav-pills-modern {
@@ -415,6 +428,26 @@ html, body {
   .nav-pills-modern .nav-link-modern {
     width: 100%;
     justify-content: center;
+  }
+}
+
+@media (max-width: 440px) {
+  .top-navbar {
+    padding: 0 0.75rem;
+  }
+
+  .brand-title {
+    font-size: 1.05rem;
+  }
+
+  .brand-icon-box {
+    width: 28px;
+    height: 28px;
+    font-size: 1rem;
+  }
+
+  .user-profile-chip {
+    padding: 0.25rem 0.5rem;
   }
 }
 
@@ -685,10 +718,12 @@ html, body {
 @media (max-width: 767.98px) {
   .table-responsive {
     border-radius: var(--radius-lg);
+    background: transparent;
   }
   
   .table-responsive .table {
     min-width: 100%;
+    background: transparent;
   }
   
   .table-responsive .table thead {
@@ -700,37 +735,40 @@ html, body {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     margin-bottom: 1rem;
-    padding: 1rem;
+    padding: 1.15rem;
     background: #ffffff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
   }
   
   .table-responsive .table tbody td {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 0;
+    padding: 0.65rem 0;
     border-bottom: 1px solid #f1f5f9;
     border-radius: 0;
-    font-size: 0.875rem;
+    font-size: 0.885rem;
   }
   
   .table-responsive .table tbody td:last-child {
     border-bottom: none;
-    padding-top: 1rem;
+    padding-top: 0.85rem;
   }
   
   .table-responsive .table tbody td::before {
     content: attr(data-label);
-    font-weight: 600;
+    font-weight: 700;
     color: #64748b;
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    flex-shrink: 0;
+    margin-right: 0.75rem;
   }
   
   .table-responsive .table tbody td.action-cell {
-    justify-content: flex-end;
+    justify-content: center;
+    padding-top: 0.85rem;
   }
   
   .table-responsive .table tbody td.action-cell::before {
@@ -738,7 +776,18 @@ html, body {
   }
   
   .action-btn-group {
-    margin: 0 auto;
+    width: 100%;
+    justify-content: space-around;
+    padding: 4px;
+    background: #f8fafc;
+    border-radius: 10px;
+  }
+
+  .action-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+    border-radius: 8px;
   }
 }
 
@@ -936,7 +985,10 @@ html, body {
   width: 100%;
   max-width: 640px;
   max-height: 90vh;
-  overflow-y: auto;
+  max-height: 90dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: 0 20px 45px rgba(0, 0, 56, 0.25);
   animation: modalScaleIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid rgba(226, 232, 240, 0.9);
@@ -961,10 +1013,15 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
+  background: #ffffff;
 }
 
 .modal-body {
   padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-footer {
@@ -973,6 +1030,33 @@ html, body {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+  flex-shrink: 0;
+  background: #f8fafc;
+}
+
+@media (max-width: 575.98px) {
+  .modal-overlay {
+    padding: 0.5rem;
+  }
+  .modal-card {
+    max-width: 100%;
+    max-height: 95dvh;
+    border-radius: 14px;
+  }
+  .modal-header {
+    padding: 1rem 1.15rem;
+  }
+  .modal-body {
+    padding: 1.15rem;
+  }
+  .modal-footer {
+    padding: 0.85rem 1.15rem;
+    flex-direction: column-reverse;
+  }
+  .modal-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* 100-Point Score Breakdown Elements */

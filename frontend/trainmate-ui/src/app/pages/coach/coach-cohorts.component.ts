@@ -65,8 +65,17 @@ import { getInitials } from '../../shared/utils/helpers';
               <option value="CANCELLED">Cancelled</option>
             </select>
           </div>
-          <div class="col-md-4 text-md-end text-muted small">
-            Showing {{ filteredCohorts.length }} of {{ cohorts.length }} cohort(s)
+          <div class="col-md-4 d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              *ngIf="searchQuery || statusFilter"
+              (click)="searchQuery = ''; statusFilter = ''">
+              <i class="bi bi-x-circle me-1"></i>Reset Filters
+            </button>
+            <span class="text-muted small">
+              Showing {{ filteredCohorts.length }} of {{ cohorts.length }} cohort(s)
+            </span>
           </div>
         </div>
       </div>
@@ -153,8 +162,20 @@ import { getInitials } from '../../shared/utils/helpers';
                 </td>
               </tr>
               <tr *ngIf="filteredCohorts.length === 0">
-                <td colspan="9" class="text-center py-4 text-muted">
-                  No matching cohorts found.
+                <td colspan="9" class="text-center py-5">
+                  <div class="d-flex flex-column align-items-center justify-content-center">
+                    <i class="bi bi-collection text-muted opacity-50 mb-2" style="font-size: 2.5rem;"></i>
+                    <h6 class="text-dark fw-bold mb-1">No cohorts found</h6>
+                    <p class="text-muted small mb-3">No cohorts match your current search and status filters.</p>
+                    <div class="d-flex gap-2">
+                      <button class="btn btn-sm btn-outline-primary" *ngIf="searchQuery || statusFilter" (click)="searchQuery = ''; statusFilter = ''">
+                        <i class="bi bi-x-circle me-1"></i> Clear Filters
+                      </button>
+                      <button class="btn btn-sm btn-primary-custom" (click)="showCreateModal = true">
+                        <i class="bi bi-plus-circle-fill me-1"></i> Create Cohort
+                      </button>
+                    </div>
+                  </div>
                 </td>
               </tr>
             </tbody>

@@ -65,29 +65,36 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
             </thead>
             <tbody>
               <tr *ngFor="let c of filteredCohorts">
-                <td class="fw-bold text-dark text-nowrap">{{ c.cohortCode }}</td>
-                <td><span class="badge-tag">{{ c.requiredSkill }}</span></td>
-                <td class="text-nowrap">{{ c.coachName || 'N/A' }}</td>
-                <td class="text-nowrap">{{ c.numberOfTrainees }}</td>
-                <td class="text-nowrap">
+                <td class="fw-bold text-dark text-nowrap" data-label="Cohort Code">{{ c.cohortCode }}</td>
+                <td data-label="Required Skill"><span class="badge-tag">{{ c.requiredSkill }}</span></td>
+                <td class="text-nowrap" data-label="Coach">{{ c.coachName || 'N/A' }}</td>
+                <td class="text-nowrap" data-label="Trainees">{{ c.numberOfTrainees }}</td>
+                <td class="text-nowrap" data-label="Duration">
                   <div class="fw-medium small text-dark">{{ c.startDate }}</div>
                   <small class="text-muted">{{ c.endDate }}</small>
                 </td>
-                <td class="text-nowrap">{{ c.location }}</td>
-                <td class="text-nowrap">
+                <td class="text-nowrap" data-label="Location">{{ c.location }}</td>
+                <td class="text-nowrap" data-label="Status">
                   <span class="badge-status" [ngClass]="getStatusBadgeClass(c.status)">{{ c.status }}</span>
                 </td>
-                <td class="text-end text-nowrap">
+                <td class="text-end text-nowrap action-cell" data-label="Action">
                   <div class="action-btn-group">
-                    <button class="action-btn btn-view" title="View Cohort Details" (click)="selectedCohort = c">
+                    <button class="action-btn btn-view" title="View Cohort Details" (click)="selectedCohort = c" aria-label="View cohort details">
                       <i class="bi bi-eye"></i>
                     </button>
                   </div>
                 </td>
               </tr>
               <tr *ngIf="filteredCohorts.length === 0">
-                <td colspan="8" class="text-center py-4 text-muted">
-                  No matching assigned cohorts found.
+                <td colspan="8" class="text-center py-5">
+                  <div class="d-flex flex-column align-items-center justify-content-center">
+                    <i class="bi bi-calendar-x text-muted opacity-50 mb-2" style="font-size: 2.5rem;"></i>
+                    <h6 class="text-dark fw-bold mb-1">No matching cohorts</h6>
+                    <p class="text-muted small mb-3">No cohorts match your current search criteria.</p>
+                    <button class="btn btn-sm btn-outline-primary" *ngIf="searchQuery || statusFilter" (click)="searchQuery = ''; statusFilter = ''">
+                      <i class="bi bi-x-circle me-1"></i> Clear Filters
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>

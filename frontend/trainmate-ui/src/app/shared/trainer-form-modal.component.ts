@@ -174,6 +174,21 @@ export class TrainerFormModalComponent implements OnInit {
   }
 
   onSave(): void {
+    if (!this.formData.name || !this.formData.email || !this.formData.skillSet || !this.formData.availableFrom || !this.formData.availableTill) {
+      this.errorMessage = 'Please complete all required fields.';
+      return;
+    }
+
+    if (new Date(this.formData.availableTill) < new Date(this.formData.availableFrom)) {
+      this.errorMessage = 'Available Till date cannot be earlier than Available From date.';
+      return;
+    }
+
+    if (this.formData.maxWorkload < 1 || this.formData.maxWorkload > 10) {
+      this.errorMessage = 'Maximum concurrent workload must be between 1 and 10.';
+      return;
+    }
+
     this.isSubmitting = true;
     this.errorMessage = '';
 

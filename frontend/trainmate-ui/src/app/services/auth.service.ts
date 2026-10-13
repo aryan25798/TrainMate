@@ -76,4 +76,12 @@ export class AuthService {
       this.router.navigate(['/login']);
     }
   }
+
+  public prewarmBackend(): void {
+    // Silently ping backend so Render container starts booting before user logs in
+    this.http.get(`${environment.apiUrl}/cohorts`, { observe: 'response' }).subscribe({
+      next: () => {},
+      error: () => {}
+    });
+  }
 }

@@ -71,10 +71,19 @@ import { getInitials } from '../../shared/utils/helpers';
               <option *ngFor="let sl of serviceLines" [value]="sl">{{ sl }}</option>
             </select>
           </div>
-          <div class="col-md-4 text-md-end text-muted small" *ngIf="pagedData">
-            Showing {{ (pagedData.number || 0) * (pagedData.size || 20) + 1 }} to 
-            {{ Math.min((pagedData.number || 0) * (pagedData.size || 20) + (pagedData.numberOfElements || 0), pagedData.totalElements || 0) }} 
-            of {{ pagedData.totalElements || 0 }} cohort(s)
+          <div class="col-md-4 d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              *ngIf="searchQuery || statusFilter || serviceLineFilter"
+              (click)="searchQuery = ''; statusFilter = ''; serviceLineFilter = ''">
+              <i class="bi bi-x-circle me-1"></i>Reset Filters
+            </button>
+            <span class="text-muted small" *ngIf="pagedData">
+              Showing {{ (pagedData.number || 0) * (pagedData.size || 20) + 1 }} to 
+              {{ Math.min((pagedData.number || 0) * (pagedData.size || 20) + (pagedData.numberOfElements || 0), pagedData.totalElements || 0) }} 
+              of {{ pagedData.totalElements || 0 }}
+            </span>
           </div>
         </div>
       </div>
@@ -164,8 +173,15 @@ import { getInitials } from '../../shared/utils/helpers';
                 </td>
               </tr>
               <tr *ngIf="filteredCohorts.length === 0">
-                <td colspan="9" class="text-center py-4 text-muted">
-                  No matching cohorts found.
+                <td colspan="9" class="text-center py-5">
+                  <div class="d-flex flex-column align-items-center justify-content-center">
+                    <i class="bi bi-diagram-3 text-muted opacity-50 mb-2" style="font-size: 2.5rem;"></i>
+                    <h6 class="text-dark fw-bold mb-1">No matching cohorts</h6>
+                    <p class="text-muted small mb-3">No cohorts match your current search and filter settings.</p>
+                    <button class="btn btn-sm btn-outline-primary" *ngIf="searchQuery || statusFilter || serviceLineFilter" (click)="searchQuery = ''; statusFilter = ''; serviceLineFilter = ''">
+                      <i class="bi bi-x-circle me-1"></i> Clear All Filters
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>

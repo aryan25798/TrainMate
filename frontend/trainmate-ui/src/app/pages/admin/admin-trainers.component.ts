@@ -72,7 +72,7 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
             </thead>
             <tbody>
               <tr *ngFor="let t of filteredTrainers">
-                <td class="text-nowrap">
+                <td class="text-nowrap" data-label="Trainer">
                   <div class="d-flex align-items-center gap-2">
                     <span class="user-avatar" style="width: 34px; height: 34px; font-size: 0.9rem;">
                       {{ t.name.charAt(0) }}
@@ -83,15 +83,15 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
                     </div>
                   </div>
                 </td>
-                <td style="min-width: 180px; max-width: 260px;">
+                <td style="min-width: 180px; max-width: 260px;" data-label="Skills">
                   <span class="badge-tag" *ngFor="let s of t.skills">{{ s }}</span>
                 </td>
-                <td class="text-nowrap"><span class="fw-semibold">{{ t.experienceYears }}</span> yrs</td>
-                <td class="text-nowrap">
+                <td class="text-nowrap" data-label="Experience"><span class="fw-semibold">{{ t.experienceYears }}</span> yrs</td>
+                <td class="text-nowrap" data-label="Availability">
                   <div class="fw-medium small text-dark">{{ t.availableFrom }}</div>
                   <small class="text-muted">to {{ t.availableTill }}</small>
                 </td>
-                <td class="text-nowrap">
+                <td class="text-nowrap" data-label="Workload">
                   <div class="d-flex align-items-center gap-2" style="min-width: 130px;">
                     <div class="progress flex-grow-1" style="height: 7px; border-radius: 6px; background-color: #f1f5f9;">
                       <div
@@ -103,17 +103,17 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
                     <span class="fw-semibold small text-dark">{{ t.workloadRatio }}</span>
                   </div>
                 </td>
-                <td class="text-nowrap"><span class="badge bg-light text-dark border">{{ t.previouslyHandledCohorts }}</span></td>
-                <td class="text-nowrap">
+                <td class="text-nowrap" data-label="Handled Cohorts"><span class="badge bg-light text-dark border">{{ t.previouslyHandledCohorts }}</span></td>
+                <td class="text-nowrap" data-label="Status">
                   <span
                     class="badge-status"
                     [ngClass]="t.status === 'AVAILABLE' ? 'badge-assigned' : 'badge-unassigned'">
                     {{ t.status }}
                   </span>
                 </td>
-                <td class="text-end text-nowrap">
+                <td class="text-end text-nowrap action-cell" data-label="Actions">
                   <div class="action-btn-group">
-                    <button class="action-btn btn-edit" (click)="openEditTrainer(t)" title="Edit Trainer Details">
+                    <button class="action-btn btn-edit" (click)="openEditTrainer(t)" title="Edit Trainer Details" aria-label="Edit trainer">
                       <i class="bi bi-pencil"></i>
                     </button>
                     <button
@@ -121,18 +121,26 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
                       [ngClass]="t.status === 'AVAILABLE' ? 'btn-reallocate' : 'btn-view'"
                       (click)="toggleAvailability(t)"
                       [title]="t.status === 'AVAILABLE' ? 'Deactivate (Set Unavailable)' : 'Activate (Set Available)'"
+                      [attr.aria-label]="t.status === 'AVAILABLE' ? 'Deactivate trainer' : 'Activate trainer'"
                     >
                       <i class="bi" [ngClass]="t.status === 'AVAILABLE' ? 'bi-pause-circle' : 'bi-play-circle'"></i>
                     </button>
-                    <button class="action-btn btn-delete" (click)="trainerToDelete = t" title="Delete Trainer">
+                    <button class="action-btn btn-delete" (click)="trainerToDelete = t" title="Delete Trainer" aria-label="Delete trainer">
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>
                 </td>
               </tr>
               <tr *ngIf="filteredTrainers.length === 0">
-                <td colspan="8" class="text-center py-4 text-muted">
-                  No matching trainers found.
+                <td colspan="8" class="text-center py-5">
+                  <div class="d-flex flex-column align-items-center justify-content-center">
+                    <i class="bi bi-people text-muted opacity-50 mb-2" style="font-size: 2.5rem;"></i>
+                    <h6 class="text-dark fw-bold mb-1">No trainers found</h6>
+                    <p class="text-muted small mb-3">No trainers matched your current search filters.</p>
+                    <button class="btn btn-sm btn-outline-primary" *ngIf="searchQuery" (click)="searchQuery = ''">
+                      <i class="bi bi-x-circle me-1"></i> Clear Search
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
