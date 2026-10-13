@@ -296,12 +296,17 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
             <div class="p-4">
               <!-- Drop / File Area -->
               <div
-                class="border border-2 border-dashed rounded-3 p-4 text-center bg-light mb-3"
-                style="border-color: #cbd5e1 !important; cursor: pointer;"
+                class="drag-drop-zone mb-3"
+                [class.dragover]="isDraggingOver"
+                (dragover)="onDragOver($event)"
+                (dragleave)="isDraggingOver = false"
+                (drop)="onDrop($event)"
                 (click)="fileInput.click()">
-                <i class="bi bi-file-earmark-spreadsheet text-primary fs-1 mb-2 d-block"></i>
-                <h6 class="fw-bold mb-1">Click to select cohort Excel file</h6>
-                <p class="text-muted small mb-0">Supported format: .xlsx</p>
+                <div class="upload-icon-circle">
+                  <i class="bi bi-cloud-arrow-up-fill"></i>
+                </div>
+                <h6 class="fw-bold mb-1 text-dark">Click or Drag & Drop cohort Excel file</h6>
+                <p class="text-muted small mb-0">Supported file formats: .xlsx, .xls</p>
                 <input
                   #fileInput
                   type="file"
@@ -576,6 +581,30 @@ export class CoachUploadComponent {
         this.manualError = err.error?.message || 'Failed to create cohort.';
       }
     });
+  }
+
+  isDraggingOver: boolean = false;
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOver = true;
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOver = false;
+    if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+      const file = event.dataTransfer.files[0];
+      if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+        this.selectedFile = file;
+        this.uploadResponse = null;
+        this.errorMessage = '';
+      } else {
+        this.errorMessage = 'Please upload a valid Excel file (.xlsx or .xls)';
+      }
+    }
   }
 
   onFileSelected(event: any): void {

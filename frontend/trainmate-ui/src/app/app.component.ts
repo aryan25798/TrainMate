@@ -5,6 +5,7 @@ import { filter, Subscription } from 'rxjs';
 import { ToastContainerComponent } from './shared/toast-container.component';
 import { LoadingSpinnerComponent } from './shared/loading-spinner.component';
 import { AuthService } from './services/auth.service';
+import { NotificationService } from './services/notification.service';
 
 @Component({
   selector: 'app-root',
@@ -79,6 +80,7 @@ import { AuthService } from './services/auth.service';
           <!-- Internal Mailbox Icon -->
           <a [routerLink]="getMailRoute()" class="btn btn-sm btn-icon-mailbox" title="Internal Mailbox" aria-label="Internal Mailbox">
             <i class="bi bi-envelope fs-5"></i>
+            <span class="mailbox-badge-dot" *ngIf="unreadCount > 0" [title]="unreadCount + ' unread message(s)'"></span>
           </a>
 
           <!-- Sign Out Button -->
@@ -254,11 +256,16 @@ export class AppComponent implements OnInit, OnDestroy {
   showLogoutConfirm: boolean = false;
   currentUserRole: string = '';
   currentUserName: string = '';
+  unreadCount: number = 0;
   isOffline: boolean = typeof navigator !== 'undefined' ? !navigator.onLine : false;
   private isMobile: boolean = false;
   private resizeSubscription?: Subscription;
 
-  constructor(private router: Router, private authService: AuthService) {
+  constructor(
+    private router: Router,
+    private authService: AuthService,
+    private notificationService: NotificationService
+  ) {
     this.checkScreenSize();
   }
 
@@ -325,6 +332,19 @@ export class AppComponent implements OnInit, OnDestroy {
     const user = this.authService.currentUserValue;
     this.currentUserRole = user?.role || '';
     this.currentUserName = user?.name || 'Associate';
+
+    if (user?.userId) {
+      this.notificationService.getUnreadCount(user.userId).subscribe({
+        next: (res) => {
+          if (res.success) {
+            this.unreadCount = res.data;
+          }
+        },
+        error: () => {}
+      });
+    } else {
+      this.unreadCount = 0;
+    }
   }
 
   getUserInitial(): string {
