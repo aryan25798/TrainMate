@@ -1058,14 +1058,22 @@ html, body {
   border-radius: 16px;
   width: 100%;
   max-width: 640px;
-  max-height: 90vh;
-  max-height: 90dvh;
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 20px 45px rgba(0, 0, 56, 0.25);
   animation: modalScaleIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.modal-card form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .modal-card.modal-sm {
@@ -1082,7 +1090,7 @@ html, body {
 }
 
 .modal-header {
-  padding: 1.25rem 1.5rem;
+  padding: 1.15rem 1.5rem;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
@@ -1092,40 +1100,61 @@ html, body {
 }
 
 .modal-body {
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem;
   overflow-y: auto;
+  overflow-x: hidden;
   flex: 1 1 auto;
+  min-height: 0;
   -webkit-overflow-scrolling: touch;
 }
 
 .modal-footer {
-  padding: 1rem 1.5rem;
+  padding: 0.95rem 1.5rem;
   border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
   background: #f8fafc;
 }
 
-@media (max-width: 575.98px) {
+@media (max-width: 767.98px) {
   .modal-overlay {
-    padding: 0.5rem;
+    padding: 0.75rem;
+    align-items: flex-end; /* Mobile bottom-sheet / full experience */
   }
   .modal-card {
     max-width: 100%;
+    max-height: 92vh;
+    max-height: 92dvh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .modal-card {
+    max-width: 100%;
+    max-height: 95vh;
     max-height: 95dvh;
-    border-radius: 14px;
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
   }
   .modal-header {
-    padding: 1rem 1.15rem;
+    padding: 1rem 1.25rem;
   }
   .modal-body {
-    padding: 1.15rem;
+    padding: 1.1rem 1.25rem;
   }
   .modal-footer {
-    padding: 0.85rem 1.15rem;
+    padding: 0.85rem 1.25rem;
     flex-direction: column-reverse;
+    gap: 0.5rem;
   }
   .modal-footer .btn {
     width: 100%;

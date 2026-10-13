@@ -25,8 +25,8 @@ import { ToastService } from '../services/toast.service';
 
         <form (ngSubmit)="onSave()">
           <div class="modal-body">
-            <div class="row g-3">
-              <div class="col-md-6">
+            <div class="row g-2 g-sm-3">
+              <div class="col-12 col-sm-6">
                 <label class="form-label fw-semibold small text-muted">Full Name *</label>
                 <input
                   type="text"
@@ -38,7 +38,7 @@ import { ToastService } from '../services/toast.service';
                 />
               </div>
 
-              <div class="col-md-6">
+              <div class="col-12 col-sm-6">
                 <label class="form-label fw-semibold small text-muted">Corporate Email *</label>
                 <input
                   type="email"
@@ -66,7 +66,7 @@ import { ToastService } from '../services/toast.service';
                 </div>
               </div>
 
-              <div class="col-md-4">
+              <div class="col-12 col-sm-4">
                 <label class="form-label fw-semibold small text-muted">Experience (Years) *</label>
                 <input
                   type="number"
@@ -79,7 +79,7 @@ import { ToastService } from '../services/toast.service';
                 />
               </div>
 
-              <div class="col-md-4">
+              <div class="col-12 col-sm-4">
                 <label class="form-label fw-semibold small text-muted">Available From *</label>
                 <input
                   type="date"
@@ -90,7 +90,7 @@ import { ToastService } from '../services/toast.service';
                 />
               </div>
 
-              <div class="col-md-4">
+              <div class="col-12 col-sm-4">
                 <label class="form-label fw-semibold small text-muted">Available Till *</label>
                 <input
                   type="date"
@@ -101,7 +101,7 @@ import { ToastService } from '../services/toast.service';
                 />
               </div>
 
-              <div class="col-md-6">
+              <div class="col-12 col-sm-6">
                 <label class="form-label fw-semibold small text-muted">Maximum Concurrent Workload *</label>
                 <input
                   type="number"

@@ -66,9 +66,9 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
 
               <!-- Form -->
               <form (ngSubmit)="onManualSubmit()">
-                <div class="row g-3">
+                <div class="row g-2 g-sm-3">
                   <!-- Cohort Code -->
-                  <div class="col-md-7">
+                  <div class="col-12 col-sm-7">
                     <label class="form-label fw-semibold small">Cohort Code <span class="text-danger">*</span></label>
                     <div class="input-group">
                       <input
@@ -79,14 +79,14 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
                         name="cohortCode"
                         required
                       />
-                      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="generateRandomCode()">
-                        Generate Code
+                      <button type="button" class="btn btn-outline-primary px-3 fw-medium" (click)="generateRandomCode()">
+                        <i class="bi bi-shuffle me-1"></i>Generate
                       </button>
                     </div>
                   </div>
 
                   <!-- Number of Trainees -->
-                  <div class="col-md-5">
+                  <div class="col-12 col-sm-5">
                     <label class="form-label fw-semibold small">Trainees Count <span class="text-danger">*</span></label>
                     <input
                       type="number"
@@ -120,7 +120,7 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
                   </div>
 
                   <!-- Service Line & Stream -->
-                  <div class="col-md-6">
+                  <div class="col-12 col-sm-6">
                     <label class="form-label fw-semibold small">Service Line</label>
                     <select class="form-select" [(ngModel)]="manualForm.serviceLine" name="serviceLine">
                       <option value="QEA">QEA (Quality Engineering & Assurance)</option>
@@ -130,7 +130,7 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
                     </select>
                   </div>
 
-                  <div class="col-md-6">
+                  <div class="col-12 col-sm-6">
                     <label class="form-label fw-semibold small">Stream</label>
                     <select class="form-select" [(ngModel)]="manualForm.stream" name="stream">
                       <option value="Software Development">Software Development</option>
@@ -141,7 +141,7 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
                   </div>
 
                   <!-- Start & End Date -->
-                  <div class="col-md-6">
+                  <div class="col-12 col-sm-6">
                     <label class="form-label fw-semibold small">Start Date <span class="text-danger">*</span></label>
                     <input
                       type="date"
@@ -152,7 +152,7 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
                     />
                   </div>
 
-                  <div class="col-md-6">
+                  <div class="col-12 col-sm-6">
                     <label class="form-label fw-semibold small">End Date <span class="text-danger">*</span></label>
                     <input
                       type="date"
@@ -164,7 +164,7 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
                   </div>
 
                   <!-- Vertical & Location -->
-                  <div class="col-md-6">
+                  <div class="col-12 col-sm-6">
                     <label class="form-label fw-semibold small">Industry Vertical</label>
                     <select class="form-select" [(ngModel)]="manualForm.vertical" name="vertical">
                       <option value="Healthcare">Healthcare</option>
@@ -174,13 +174,14 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
                     </select>
                   </div>
 
-                  <div class="col-md-6">
+                  <div class="col-12 col-sm-6">
                     <label class="form-label fw-semibold small">Location</label>
                     <select class="form-select" [(ngModel)]="manualForm.location" name="location">
                       <option value="Chennai">Chennai</option>
                       <option value="Pune">Pune</option>
                       <option value="Bangalore">Bangalore</option>
                       <option value="Hyderabad">Hyderabad</option>
+                      <option value="Kolkata">Kolkata</option>
                       <option value="Virtual">Virtual / Remote</option>
                     </select>
                   </div>

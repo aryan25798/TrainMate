@@ -25,8 +25,8 @@ import { ToastService } from '../services/toast.service';
 
         <form (ngSubmit)="onSave()">
           <div class="modal-body">
-            <div class="row g-3">
-              <div class="col-md-6">
+            <div class="row g-2 g-sm-3">
+              <div class="col-12 col-sm-6">
                 <label class="form-label fw-semibold small text-muted">Required Skills *</label>
                 <input
                   type="text"
@@ -38,7 +38,7 @@ import { ToastService } from '../services/toast.service';
                 />
               </div>
 
-              <div class="col-md-6">
+              <div class="col-12 col-sm-6">
                 <label class="form-label fw-semibold small text-muted">Number of Trainees *</label>
                 <input
                   type="number"
@@ -50,7 +50,7 @@ import { ToastService } from '../services/toast.service';
                 />
               </div>
 
-              <div class="col-md-6">
+              <div class="col-12 col-sm-6">
                 <label class="form-label fw-semibold small text-muted">Start Date *</label>
                 <input
                   type="date"
@@ -61,7 +61,7 @@ import { ToastService } from '../services/toast.service';
                 />
               </div>
 
-              <div class="col-md-6">
+              <div class="col-12 col-sm-6">
                 <label class="form-label fw-semibold small text-muted">End Date *</label>
                 <input
                   type="date"
@@ -72,7 +72,7 @@ import { ToastService } from '../services/toast.service';
                 />
               </div>
 
-              <div class="col-md-4">
+              <div class="col-12 col-sm-4">
                 <label class="form-label fw-semibold small text-muted">Location *</label>
                 <select class="form-select" [(ngModel)]="formData.location" name="location" required>
                   <option value="Chennai">Chennai</option>
@@ -85,7 +85,7 @@ import { ToastService } from '../services/toast.service';
                 </select>
               </div>
 
-              <div class="col-md-4">
+              <div class="col-12 col-sm-4">
                 <label class="form-label fw-semibold small text-muted">Service Line</label>
                 <input
                   type="text"
@@ -95,7 +95,7 @@ import { ToastService } from '../services/toast.service';
                 />
               </div>
 
-              <div class="col-md-4">
+              <div class="col-12 col-sm-4">
                 <label class="form-label fw-semibold small text-muted">Stream</label>
                 <input
                   type="text"

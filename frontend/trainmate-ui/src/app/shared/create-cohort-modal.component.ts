@@ -27,10 +27,10 @@ import { Cohort, CreateCohortRequest } from '../models/models';
               <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
             </div>
 
-            <!-- Form Fields in 2-column grid -->
-            <div class="row g-3">
+            <!-- Form Fields in responsive grid -->
+            <div class="row g-2 g-sm-3">
               <!-- Cohort Code -->
-              <div class="col-md-7">
+              <div class="col-12 col-sm-7">
                 <label class="form-label fw-semibold small">Cohort Code <span class="text-danger">*</span></label>
                 <div class="input-group">
                   <input
@@ -41,14 +41,14 @@ import { Cohort, CreateCohortRequest } from '../models/models';
                     name="cohortCode"
                     required
                   />
-                  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="generateRandomCode()">
-                    Generate
+                  <button type="button" class="btn btn-outline-primary px-3 fw-medium" (click)="generateRandomCode()">
+                    <i class="bi bi-shuffle me-1"></i>Generate
                   </button>
                 </div>
               </div>
 
               <!-- Number of Trainees -->
-              <div class="col-md-5">
+              <div class="col-12 col-sm-5">
                 <label class="form-label fw-semibold small">Trainees Count <span class="text-danger">*</span></label>
                 <input
                   type="number"
@@ -72,11 +72,11 @@ import { Cohort, CreateCohortRequest } from '../models/models';
                   name="requiredSkill"
                   required
                 />
-                <small class="text-muted">Separate multiple skills with commas. The algorithm scores based on skill match.</small>
+                <small class="text-muted d-block mt-1">Separate multiple skills with commas. The algorithm scores based on skill match.</small>
               </div>
 
               <!-- Service Line & Stream -->
-              <div class="col-md-6">
+              <div class="col-12 col-sm-6">
                 <label class="form-label fw-semibold small">Service Line</label>
                 <select class="form-select" [(ngModel)]="formData.serviceLine" name="serviceLine">
                   <option value="QEA">QEA (Quality Engineering & Assurance)</option>
@@ -86,7 +86,7 @@ import { Cohort, CreateCohortRequest } from '../models/models';
                 </select>
               </div>
 
-              <div class="col-md-6">
+              <div class="col-12 col-sm-6">
                 <label class="form-label fw-semibold small">Stream</label>
                 <select class="form-select" [(ngModel)]="formData.stream" name="stream">
                   <option value="Software Development">Software Development</option>
@@ -97,7 +97,7 @@ import { Cohort, CreateCohortRequest } from '../models/models';
               </div>
 
               <!-- Dates -->
-              <div class="col-md-6">
+              <div class="col-12 col-sm-6">
                 <label class="form-label fw-semibold small">Start Date <span class="text-danger">*</span></label>
                 <input
                   type="date"
@@ -108,7 +108,7 @@ import { Cohort, CreateCohortRequest } from '../models/models';
                 />
               </div>
 
-              <div class="col-md-6">
+              <div class="col-12 col-sm-6">
                 <label class="form-label fw-semibold small">End Date <span class="text-danger">*</span></label>
                 <input
                   type="date"
@@ -120,7 +120,7 @@ import { Cohort, CreateCohortRequest } from '../models/models';
               </div>
 
               <!-- Vertical & Location -->
-              <div class="col-md-6">
+              <div class="col-12 col-sm-6">
                 <label class="form-label fw-semibold small">Industry Vertical</label>
                 <select class="form-select" [(ngModel)]="formData.vertical" name="vertical">
                   <option value="Healthcare">Healthcare</option>
@@ -131,7 +131,7 @@ import { Cohort, CreateCohortRequest } from '../models/models';
                 </select>
               </div>
 
-              <div class="col-md-6">
+              <div class="col-12 col-sm-6">
                 <label class="form-label fw-semibold small">Training Location</label>
                 <select class="form-select" [(ngModel)]="formData.location" name="location">
                   <option value="Chennai">Chennai</option>
