@@ -61,7 +61,6 @@ import { AuthService } from '../../services/auth.service';
               name="loginId"
               autocomplete="username"
               required
-              autofocus
             />
           </div>
 

@@ -58,9 +58,12 @@ export class AuthService {
     );
   }
 
+  private static hasPrewarmed = false;
+
   public logout(): void {
     localStorage.removeItem('trainmate_user');
     this.currentUserSubject.next(null);
+    AuthService.hasPrewarmed = true; // Backend is already warm from active session
     this.router.navigate(['/login']);
   }
 
@@ -78,8 +81,12 @@ export class AuthService {
   }
 
   public prewarmBackend(): void {
-    // Silently ping backend so Render container starts booting before user logs in
-    this.http.get(`${environment.apiUrl}/cohorts`, { observe: 'response' }).subscribe({
+    if (AuthService.hasPrewarmed) {
+      return;
+    }
+    AuthService.hasPrewarmed = true;
+    // Silently ping valid backend endpoint to boot Render container early
+    this.http.get(`${environment.apiUrl}/admin/cohorts`, { observe: 'response' }).subscribe({
       next: () => {},
       error: () => {}
     });
