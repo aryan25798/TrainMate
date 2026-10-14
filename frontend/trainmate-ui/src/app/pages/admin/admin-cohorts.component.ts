@@ -9,6 +9,7 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
 import { ReassignModalComponent } from '../../shared/reassign-modal.component';
 import { EditCohortModalComponent } from '../../shared/edit-cohort-modal.component';
 import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
+import { ErrorCardComponent } from '../../shared/error-card.component';
 import { StatusBadgePipe } from '../../shared/pipes/status-badge.pipe';
 import { getInitials } from '../../shared/utils/helpers';
 
@@ -22,6 +23,7 @@ import { getInitials } from '../../shared/utils/helpers';
     ReassignModalComponent,
     EditCohortModalComponent,
     ConfirmModalComponent,
+    ErrorCardComponent,
     StatusBadgePipe
   ],
   template: `
@@ -57,11 +59,12 @@ import { getInitials } from '../../shared/utils/helpers';
                 class="form-control"
                 placeholder="Search code, skill, coach, trainer..."
                 [(ngModel)]="searchQuery"
+                (ngModelChange)="applyFilter()"
               />
             </div>
           </div>
           <div class="col-md-2">
-            <select class="form-select" [(ngModel)]="statusFilter">
+            <select class="form-select" [(ngModel)]="statusFilter" (ngModelChange)="applyFilter()">
               <option value="">All Statuses</option>
               <option value="ASSIGNED">Assigned</option>
               <option value="UNASSIGNED">Unassigned</option>
@@ -73,7 +76,7 @@ import { getInitials } from '../../shared/utils/helpers';
             </select>
           </div>
           <div class="col-md-2">
-            <select class="form-select" [(ngModel)]="serviceLineFilter">
+            <select class="form-select" [(ngModel)]="serviceLineFilter" (ngModelChange)="applyFilter()">
               <option value="">All Service Lines</option>
               <option *ngFor="let sl of serviceLines" [value]="sl">{{ sl }}</option>
             </select>
@@ -83,7 +86,7 @@ import { getInitials } from '../../shared/utils/helpers';
               type="button"
               class="btn btn-sm btn-outline-secondary"
               *ngIf="searchQuery || statusFilter || serviceLineFilter"
-              (click)="searchQuery = ''; statusFilter = ''; serviceLineFilter = ''">
+              (click)="resetFilters()">
               <i class="bi bi-x-circle me-1"></i>Reset Filters
             </button>
             <span class="text-muted small" *ngIf="pagedData">
@@ -93,10 +96,17 @@ import { getInitials } from '../../shared/utils/helpers';
             </span>
           </div>
         </div>
-      </div>
+      <!-- Error State with Retry -->
+      <app-error-card
+        *ngIf="hasError"
+        title="Unable to load cohorts"
+        message="A network error occurred or the cloud server is waking up. Click below to retry."
+        [isRetrying]="isLoading"
+        (retry)="loadCohorts()">
+      </app-error-card>
 
       <!-- Cohorts Table -->
-      <div class="content-card">
+      <div class="content-card" *ngIf="!hasError">
         <div class="table-responsive">
           <table class="table table-hover align-middle">
             <thead>
@@ -123,6 +133,28 @@ import { getInitials } from '../../shared/utils/helpers';
               </tr>
             </thead>
             <tbody>
+              <!-- Skeleton Loading Rows -->
+              <ng-container *ngIf="isLoading">
+                <tr *ngFor="let i of [1,2,3,4,5,6]">
+                  <td class="text-center"><div class="skeleton-shimmer" style="width:16px;height:16px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:95px;height:16px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:55px;height:16px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:120px;height:22px;border-radius:12px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:30px;height:16px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:85px;height:16px;border-radius:4px;"></div></td>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="skeleton-shimmer" style="width:32px;height:32px;border-radius:50%;"></div>
+                      <div class="skeleton-shimmer" style="width:80px;height:16px;border-radius:4px;"></div>
+                    </div>
+                  </td>
+                  <td><div class="skeleton-shimmer" style="width:75px;height:14px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:85px;height:24px;border-radius:6px;"></div></td>
+                  <td class="text-end"><div class="skeleton-shimmer" style="width:70px;height:28px;border-radius:6px;"></div></td>
+                </tr>
+              </ng-container>
+
+              <ng-container *ngIf="!isLoading">
               <tr *ngFor="let c of filteredCohorts" [class.table-active]="selectedCohortIds.has(c.id)">
                 <td class="text-center" data-label="Select">
                   <input
@@ -197,19 +229,20 @@ import { getInitials } from '../../shared/utils/helpers';
                     </button>
                   </div>
                 </td>
-              </tr>
-              <tr *ngIf="filteredCohorts.length === 0">
-                <td colspan="9" class="text-center py-5">
-                  <div class="d-flex flex-column align-items-center justify-content-center">
-                    <i class="bi bi-diagram-3 text-muted opacity-50 mb-2" style="font-size: 2.5rem;"></i>
-                    <h6 class="text-dark fw-bold mb-1">No matching cohorts</h6>
-                    <p class="text-muted small mb-3">No cohorts match your current search and filter settings.</p>
-                    <button class="btn btn-sm btn-outline-primary" *ngIf="searchQuery || statusFilter || serviceLineFilter" (click)="searchQuery = ''; statusFilter = ''; serviceLineFilter = ''">
-                      <i class="bi bi-x-circle me-1"></i> Clear All Filters
-                    </button>
-                  </div>
-                </td>
-              </tr>
+                </tr>
+                <tr *ngIf="filteredCohorts.length === 0">
+                  <td colspan="10" class="text-center py-5">
+                    <div class="d-flex flex-column align-items-center justify-content-center">
+                      <i class="bi bi-diagram-3 text-muted opacity-50 mb-2" style="font-size: 2.5rem;"></i>
+                      <h6 class="text-dark fw-bold mb-1">No matching cohorts</h6>
+                      <p class="text-muted small mb-3">No cohorts match your current search and filter settings.</p>
+                      <button class="btn btn-sm btn-outline-primary" *ngIf="searchQuery || statusFilter || serviceLineFilter" (click)="resetFilters()">
+                        <i class="bi bi-x-circle me-1"></i> Clear All Filters
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </ng-container>
             </tbody>
           </table>
         </div>
@@ -300,7 +333,25 @@ import { getInitials } from '../../shared/utils/helpers';
       (cancel)="showBulkDeleteConfirm = false"
       (confirm)="confirmBulkDelete()">
     </app-confirm-modal>
-  `
+  `,
+  styles: [`
+    .skeleton-shimmer {
+      background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite ease-in-out;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton-shimmer { animation: none; background: #f1f5f9; }
+    }
+  `]
 })
 export class AdminCohortsComponent implements OnInit {
   cohorts: Cohort[] = [];
@@ -315,6 +366,8 @@ export class AdminCohortsComponent implements OnInit {
   currentPage: number = 0;
   pageSize: number = 20;
   sortBy: string = 'createdDate,desc';
+  isLoading: boolean = true;
+  hasError: boolean = false;
 
   selectedCohortForDetails: Cohort | null = null;
   selectedCohortForReassign: Cohort | null = null;
@@ -335,6 +388,8 @@ export class AdminCohortsComponent implements OnInit {
   }
 
   loadCohorts(): void {
+    this.isLoading = true;
+    this.hasError = false;
     this.adminService.getAllCohortsPaged(this.currentPage, this.pageSize, this.sortBy).subscribe({
       next: res => {
         if (res.success) {
@@ -343,7 +398,13 @@ export class AdminCohortsComponent implements OnInit {
           this.displayedCohorts = res.data.content;
           this.selectedCohortIds.clear();
           this.extractServiceLines();
+          this.applyFilter();
         }
+        this.isLoading = false;
+      },
+      error: () => {
+        this.isLoading = false;
+        this.hasError = true;
       }
     });
   }
@@ -511,25 +572,35 @@ export class AdminCohortsComponent implements OnInit {
         a.href = url;
         a.download = 'cohort_allocations.xlsx';
         a.click();
-        window.URL.revokeObjectURL(url);
+        setTimeout(() => window.URL.revokeObjectURL(url), 1000);
         this.toastService.success(`Allocation report downloaded.`);
       }
     });
   }
 
-  get filteredCohorts(): Cohort[] {
-    return this.cohorts.filter(c => {
-      const matchesSearch = !this.searchQuery ||
-        c.cohortCode.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        c.requiredSkill.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        (c.coachName && c.coachName.toLowerCase().includes(this.searchQuery.toLowerCase())) ||
-        (c.assignedTrainerName && c.assignedTrainerName.toLowerCase().includes(this.searchQuery.toLowerCase()));
+  filteredCohorts: Cohort[] = [];
+
+  applyFilter(): void {
+    const q = this.searchQuery ? this.searchQuery.toLowerCase().trim() : '';
+    this.filteredCohorts = this.cohorts.filter(c => {
+      const matchesSearch = !q ||
+        c.cohortCode.toLowerCase().includes(q) ||
+        c.requiredSkill.toLowerCase().includes(q) ||
+        (c.coachName && c.coachName.toLowerCase().includes(q)) ||
+        (c.assignedTrainerName && c.assignedTrainerName.toLowerCase().includes(q));
 
       const matchesStatus = !this.statusFilter || c.status === this.statusFilter;
       const matchesSL = !this.serviceLineFilter || c.serviceLine === this.serviceLineFilter;
 
       return matchesSearch && matchesStatus && matchesSL;
     });
+  }
+
+  resetFilters(): void {
+    this.searchQuery = '';
+    this.statusFilter = '';
+    this.serviceLineFilter = '';
+    this.applyFilter();
   }
 
   protected readonly getInitials = getInitials;

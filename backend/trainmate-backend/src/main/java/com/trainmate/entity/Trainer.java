@@ -41,6 +41,10 @@ public class Trainer {
     @Column(name = "updated_by")
     private Long updatedBy;
 
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     public Trainer() {}
 
     public Long getId() {
@@ -121,5 +125,13 @@ public class Trainer {
 
     public void setUpdatedBy(Long updatedBy) {
         this.updatedBy = updatedBy;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 }

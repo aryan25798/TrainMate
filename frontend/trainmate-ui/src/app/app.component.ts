@@ -4,18 +4,19 @@ import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { ToastContainerComponent } from './shared/toast-container.component';
 import { LoadingSpinnerComponent } from './shared/loading-spinner.component';
+import { ServerStatusBannerComponent } from './shared/server-status-banner.component';
 import { AuthService } from './services/auth.service';
 import { NotificationService } from './services/notification.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterModule, ToastContainerComponent, LoadingSpinnerComponent],
+  imports: [CommonModule, RouterModule, ToastContainerComponent, LoadingSpinnerComponent, ServerStatusBannerComponent],
   template: `
     <!-- Global Toast Notifications -->
     <app-toast-container></app-toast-container>
 
-    <!-- Global Loading Spinner -->
+    <!-- Global Loading Spinner for Explicit Blocking Actions -->
     <app-loading-spinner></app-loading-spinner>
 
     <!-- Global Offline Warning Banner -->
@@ -26,6 +27,7 @@ import { NotificationService } from './services/notification.service';
 
     <!-- If on Login page, show full-screen scroll container -->
     <div *ngIf="isAuthPage" class="login-container">
+      <app-server-status-banner></app-server-status-banner>
       <router-outlet></router-outlet>
     </div>
 
@@ -189,6 +191,7 @@ import { NotificationService } from './services/notification.service';
 
         <!-- 3. MAIN INDEPENDENTLY SCROLLABLE CONTENT (Expands smoothly to 100% when sidebar is toggled) -->
         <main class="app-main-content" role="main">
+          <app-server-status-banner></app-server-status-banner>
           <router-outlet></router-outlet>
         </main>
       </div>

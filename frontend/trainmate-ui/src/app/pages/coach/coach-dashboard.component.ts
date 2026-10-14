@@ -6,13 +6,26 @@ import { AuthService } from '../../services/auth.service';
 import { CoachDashboard, Cohort } from '../../models/models';
 import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.component';
 import { CreateCohortModalComponent } from '../../shared/create-cohort-modal.component';
+import { SkeletonCardComponent } from '../../shared/skeleton/skeleton-card.component';
+import { SkeletonTableComponent } from '../../shared/skeleton/skeleton-table.component';
+import { ErrorCardComponent } from '../../shared/error-card.component';
 import { StatusBadgePipe } from '../../shared/pipes/status-badge.pipe';
 import { getInitials } from '../../shared/utils/helpers';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-coach-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, CohortDetailsModalComponent, CreateCohortModalComponent, StatusBadgePipe],
+  imports: [
+    CommonModule,
+    RouterModule,
+    CohortDetailsModalComponent,
+    CreateCohortModalComponent,
+    SkeletonCardComponent,
+    SkeletonTableComponent,
+    ErrorCardComponent,
+    StatusBadgePipe
+  ],
   template: `
     <div>
       <!-- Page Header -->
@@ -33,47 +46,67 @@ import { getInitials } from '../../shared/utils/helpers';
         </div>
       </div>
 
+      <!-- Error State with Retry -->
+      <app-error-card
+        *ngIf="hasError"
+        title="Unable to load coach dashboard"
+        message="A network error occurred or the cloud server is waking up. Click below to retry."
+        [isRetrying]="isLoading"
+        (retry)="loadData()">
+      </app-error-card>
+
       <!-- Stat Cards -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div>
-            <div class="stat-title">Total Cohorts</div>
-            <div class="stat-value">{{ dashboard?.totalCohorts || 0 }}</div>
-          </div>
-          <div class="stat-icon blue">
-            <i class="bi bi-collection-fill"></i>
-          </div>
-        </div>
+      <div class="stats-grid" *ngIf="!hasError">
+        <ng-container *ngIf="isLoading">
+          <app-skeleton-card></app-skeleton-card>
+          <app-skeleton-card></app-skeleton-card>
+          <app-skeleton-card></app-skeleton-card>
+        </ng-container>
 
-        <div class="stat-card">
-          <div>
-            <div class="stat-title">Assigned Cohorts</div>
-            <div class="stat-value text-success">{{ dashboard?.assigned || 0 }}</div>
+        <ng-container *ngIf="!isLoading">
+          <div class="stat-card">
+            <div>
+              <div class="stat-title">Total Cohorts</div>
+              <div class="stat-value">{{ dashboard?.totalCohorts || 0 }}</div>
+            </div>
+            <div class="stat-icon blue">
+              <i class="bi bi-collection-fill"></i>
+            </div>
           </div>
-          <div class="stat-icon green">
-            <i class="bi bi-check-circle-fill"></i>
-          </div>
-        </div>
 
-        <div class="stat-card">
-          <div>
-            <div class="stat-title">Unassigned Cohorts</div>
-            <div class="stat-value text-danger">{{ dashboard?.unassigned || 0 }}</div>
+          <div class="stat-card">
+            <div>
+              <div class="stat-title">Assigned Cohorts</div>
+              <div class="stat-value text-success">{{ dashboard?.assigned || 0 }}</div>
+            </div>
+            <div class="stat-icon green">
+              <i class="bi bi-check-circle-fill"></i>
+            </div>
           </div>
-          <div class="stat-icon red">
-            <i class="bi bi-exclamation-octagon-fill"></i>
+
+          <div class="stat-card">
+            <div>
+              <div class="stat-title">Unassigned Cohorts</div>
+              <div class="stat-value text-danger">{{ dashboard?.unassigned || 0 }}</div>
+            </div>
+            <div class="stat-icon red">
+              <i class="bi bi-exclamation-octagon-fill"></i>
+            </div>
           </div>
-        </div>
+        </ng-container>
       </div>
 
       <!-- Recent Cohorts Table (FRD Section 41) -->
-      <div class="content-card">
+      <div class="content-card" *ngIf="!hasError">
         <div class="content-card-header">
           <h3 class="content-card-title">Recent Cohorts</h3>
           <a routerLink="/coach/cohorts" class="btn btn-sm btn-outline-secondary">View All</a>
         </div>
 
-        <div class="table-responsive">
+        <!-- Skeleton Table Placeholder -->
+        <app-skeleton-table *ngIf="isLoading" [rows]="5" [columns]="6"></app-skeleton-table>
+
+        <div class="table-responsive" *ngIf="!isLoading">
           <table class="table table-hover align-middle">
             <thead>
               <tr>
@@ -112,8 +145,15 @@ import { getInitials } from '../../shared/utils/helpers';
                 </td>
               </tr>
               <tr *ngIf="recentCohorts.length === 0">
-                <td colspan="6" class="text-center py-4 text-muted">
-                  No cohorts found. Create or upload your first cohort using the buttons above.
+                <td colspan="6" class="text-center py-5">
+                  <div class="d-flex flex-column align-items-center justify-content-center">
+                    <i class="bi bi-collection text-muted opacity-50 mb-2" style="font-size: 2.25rem;"></i>
+                    <h6 class="text-dark fw-bold mb-1">No cohorts created yet</h6>
+                    <p class="text-muted small mb-3">Create or upload your first cohort to see allocation results.</p>
+                    <button class="btn btn-sm btn-primary-custom" (click)="showCreateModal = true">
+                      <i class="bi bi-plus-circle-fill me-1"></i> Create First Cohort
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -143,6 +183,8 @@ export class CoachDashboardComponent implements OnInit {
   selectedCohort: Cohort | null = null;
   showCreateModal: boolean = false;
   userName: string = 'Coach';
+  isLoading: boolean = true;
+  hasError: boolean = false;
 
   constructor(
     private coachService: CoachService,
@@ -158,30 +200,38 @@ export class CoachDashboardComponent implements OnInit {
   loadData(): void {
     const user = this.authService.currentUserValue;
     const coachId = user?.coachId ?? user?.userId;
-    if (!coachId) return;
+    if (!coachId) {
+      this.isLoading = false;
+      return;
+    }
 
-    this.coachService.getDashboard(coachId).subscribe({
-      next: res => {
-        if (res.success) {
-          this.dashboard = res.data;
-        }
-      },
-      error: err => console.error('Failed to load coach dashboard:', err)
-    });
+    this.isLoading = true;
+    this.hasError = false;
 
-    this.coachService.getCohorts(coachId).subscribe({
-      next: res => {
-        if (res.success) {
-          this.recentCohorts = res.data.slice(0, 5);
+    forkJoin({
+      dashboard: this.coachService.getDashboard(coachId),
+      cohorts: this.coachService.getCohorts(coachId)
+    }).subscribe({
+      next: ({ dashboard, cohorts }) => {
+        if (dashboard.success) {
+          this.dashboard = dashboard.data;
         }
+        if (cohorts.success) {
+          this.recentCohorts = cohorts.data.slice(0, 5);
+        }
+        this.isLoading = false;
       },
-      error: err => console.error('Failed to load coach cohorts:', err)
+      error: (err) => {
+        console.error('Failed to load coach dashboard:', err);
+        this.isLoading = false;
+        this.hasError = true;
+      }
     });
   }
 
   onCohortCreated(created: Cohort): void {
     this.loadData();
-    this.selectedCohort = created; // automatically open details modal to show allocation result!
+    this.selectedCohort = created;
   }
 
   protected readonly getInitials = getInitials;

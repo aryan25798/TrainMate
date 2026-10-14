@@ -85,8 +85,8 @@ export class AuthService {
       return;
     }
     AuthService.hasPrewarmed = true;
-    // Silently ping valid backend endpoint to boot Render container early
-    this.http.get(`${environment.apiUrl}/admin/cohorts`, { observe: 'response' }).subscribe({
+    // Silently ping lightweight liveness endpoint to boot Render container early without DB scan
+    this.http.get(`${environment.apiUrl}/health`, { observe: 'response' }).subscribe({
       next: () => {},
       error: () => {}
     });

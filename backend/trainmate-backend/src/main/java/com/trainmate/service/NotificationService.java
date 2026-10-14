@@ -62,9 +62,7 @@ public class NotificationService {
         );
 
         // Alert to Admins
-        List<User> admins = userRepository.findAll().stream()
-                .filter(u -> u.getRole() == Role.ADMIN)
-                .collect(Collectors.toList());
+        List<User> admins = userRepository.findByRole(Role.ADMIN);
 
         for (User admin : admins) {
             sendMail(

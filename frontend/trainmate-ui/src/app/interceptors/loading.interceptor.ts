@@ -6,11 +6,9 @@ import {
   HttpInterceptor,
   HttpErrorResponse
 } from '@angular/common/http';
-import { Observable, finalize, catchError, throwError } from 'rxjs';
+import { Observable, finalize, catchError, throwError, retry, timer, tap } from 'rxjs';
 import { LoadingService } from '../services/loading.service';
-import { ToastService } from '../services/toast.service';
-import { AuthService } from '../services/auth.service';
-import { Router } from '@angular/router';
+import { BackendStatusService } from '../services/backend-status.service';
 
 @Injectable()
 export class LoadingInterceptor implements HttpInterceptor {
@@ -22,62 +20,60 @@ export class LoadingInterceptor implements HttpInterceptor {
 
   constructor(
     private loadingService: LoadingService,
-    private toastService: ToastService,
-    private authService: AuthService,
-    private router: Router
+    private backendStatusService: BackendStatusService
   ) {}
 
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
-    // Skip loading for excluded URLs
-    const shouldShowLoading = !this.excludedUrls.some(url => request.url.includes(url));
-    
-    if (shouldShowLoading) {
+    const isGet = request.method === 'GET';
+    const isExcluded = this.excludedUrls.some(url => request.url.includes(url));
+    const isExplicitBlocking = request.headers.has('X-Blocking-Operation');
+
+    const cleanRequest = isExplicitBlocking
+      ? request.clone({ headers: request.headers.delete('X-Blocking-Operation') })
+      : request;
+
+    if (isExplicitBlocking) {
       this.loadingService.setLoading('global', true);
     }
 
-    return next.handle(request).pipe(
+    let retryAttempt = 0;
+    // Only auto-retry idempotent GET requests to avoid duplicate operations
+    const maxRetries = (isGet && !isExcluded) ? 3 : 0;
+
+    return next.handle(cleanRequest).pipe(
+      retry({
+        count: maxRetries,
+        delay: (error: HttpErrorResponse, count) => {
+          retryAttempt = count;
+          // Check for Render sleep, network dropped, or gateway cold-start timeouts
+          const isServerSleeping = error.status === 0 || error.status === 502 || error.status === 503 || error.status === 504;
+          if (isGet && isServerSleeping) {
+            this.backendStatusService.notifyWakeup(count, maxRetries + 1);
+            // Bounded exponential backoff with jitter: ~2.5s, 5s, 7.5s
+            const delayMs = count * 2500 + Math.floor(Math.random() * 500);
+            return timer(delayMs);
+          }
+          return throwError(() => error);
+        }
+      }),
+      tap({
+        next: () => {
+          if (retryAttempt > 0 || this.backendStatusService.currentStatus.state === 'WAKING_UP') {
+            this.backendStatusService.notifyConnected();
+          }
+        }
+      }),
       finalize(() => {
-        if (shouldShowLoading) {
+        if (isExplicitBlocking) {
           this.loadingService.setLoading('global', false);
         }
       }),
       catchError((error: HttpErrorResponse) => {
-        // Don't show error toast for 401 on login endpoint
-        if (error.status === 401 && request.url.includes('/auth/login')) {
-          return throwError(() => error);
+        if (isGet && retryAttempt >= maxRetries && (error.status === 0 || error.status >= 502)) {
+          this.backendStatusService.notifyDegraded(
+            'The cloud server is taking longer than expected to wake up from standby.'
+          );
         }
-        
-        let errorMessage = 'An unexpected error occurred';
-        
-        if (error.error instanceof ErrorEvent) {
-          errorMessage = `Network error: ${error.error.message}`;
-        } else {
-          switch (error.status) {
-            case 400:
-              errorMessage = error.error?.message || 'Bad request';
-              break;
-            case 401:
-              if (!request.url.includes('/auth/login')) {
-                errorMessage = 'Session expired. Please log in again.';
-                this.authService.logout();
-                this.router.navigate(['/login']);
-              }
-              break;
-            case 403:
-              errorMessage = 'Access denied. You do not have permission for this action.';
-              break;
-            case 404:
-              errorMessage = 'Resource not found';
-              break;
-            case 500:
-              errorMessage = 'Server error. Please try again later.';
-              break;
-            default:
-              errorMessage = error.error?.message || `Error ${error.status}: ${error.statusText}`;
-          }
-        }
-        
-        this.toastService.error(errorMessage);
         return throwError(() => error);
       })
     );

@@ -57,6 +57,10 @@ public class TrainerAllocationService {
         if (eligibleScores.isEmpty()) {
             lockedCohort.setStatus(CohortStatus.UNASSIGNED);
             lockedCohort.setAssignedTrainer(null);
+            lockedCohort.setAllocationScore(null);
+            lockedCohort.setAllocationExplanation("No eligible trainer available matching skills and dates");
+            lockedCohort.setAllocationType("AUTOMATIC");
+            lockedCohort.setAllocationDate(java.time.LocalDateTime.now());
             cohortRepository.save(lockedCohort);
 
             notificationService.notifyAllocationFailed(lockedCohort);
@@ -95,6 +99,10 @@ public class TrainerAllocationService {
         if (winner == null || lockedWinner == null) {
             lockedCohort.setStatus(CohortStatus.UNASSIGNED);
             lockedCohort.setAssignedTrainer(null);
+            lockedCohort.setAllocationScore(null);
+            lockedCohort.setAllocationExplanation("No eligible trainer available after re-check");
+            lockedCohort.setAllocationType("AUTOMATIC");
+            lockedCohort.setAllocationDate(java.time.LocalDateTime.now());
             cohortRepository.save(lockedCohort);
             notificationService.notifyAllocationFailed(lockedCohort);
 
@@ -107,6 +115,10 @@ public class TrainerAllocationService {
         // Assign directly to cohort
         lockedCohort.setAssignedTrainer(lockedWinner);
         lockedCohort.setStatus(CohortStatus.ASSIGNED);
+        lockedCohort.setAllocationScore(winner.getTotalScore());
+        lockedCohort.setAllocationExplanation(winner.getScoreBreakdown() != null ? winner.getScoreBreakdown().getExplanation() : null);
+        lockedCohort.setAllocationType("AUTOMATIC");
+        lockedCohort.setAllocationDate(java.time.LocalDateTime.now());
         cohortRepository.save(lockedCohort);
 
         // Increment trainer workload

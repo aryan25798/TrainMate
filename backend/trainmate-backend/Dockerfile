@@ -9,14 +9,22 @@ RUN mvn clean package -DskipTests
 # Run stage
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
+
+# Run as non-root user for container security
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
 COPY --from=build /app/target/*.jar app.jar
-EXPOSE 10000
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
+EXPOSE 8080 10000
+
+# Full Tiered Compilation with C2 enabled and container-aware dynamic heap limits
 ENTRYPOINT ["java", \
   "-XX:+UseG1GC", \
   "-XX:+UseContainerSupport", \
-  "-XX:+TieredCompilation", \
-  "-XX:TieredStopAtLevel=1", \
-  "-Xms128m", "-Xmx512m", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-XX:InitialRAMPercentage=50.0", \
   "-Djava.security.egd=file:/dev/./urandom", \
   "-jar", "app.jar"]
-

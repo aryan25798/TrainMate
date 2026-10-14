@@ -6,11 +6,12 @@ import { ToastService } from '../../services/toast.service';
 import { Trainer } from '../../models/models';
 import { TrainerFormModalComponent } from '../../shared/trainer-form-modal.component';
 import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
+import { ErrorCardComponent } from '../../shared/error-card.component';
 
 @Component({
   selector: 'app-admin-trainers',
   standalone: true,
-  imports: [CommonModule, FormsModule, TrainerFormModalComponent, ConfirmModalComponent],
+  imports: [CommonModule, FormsModule, TrainerFormModalComponent, ConfirmModalComponent, ErrorCardComponent],
   template: `
     <div>
       <div class="page-header">
@@ -66,8 +67,17 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
         </div>
       </div>
 
+      <!-- Error State with Retry -->
+      <app-error-card
+        *ngIf="hasError"
+        title="Unable to load trainers"
+        message="A network error occurred or the cloud server is waking up. Click below to retry."
+        [isRetrying]="isLoading"
+        (retry)="loadTrainers()">
+      </app-error-card>
+
       <!-- Trainers Table -->
-      <div class="content-card">
+      <div class="content-card" *ngIf="!hasError">
         <div class="table-responsive">
           <table class="table table-hover align-middle">
             <thead>
@@ -93,6 +103,30 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
               </tr>
             </thead>
             <tbody>
+              <!-- Skeleton Loading Rows -->
+              <ng-container *ngIf="isLoading">
+                <tr *ngFor="let i of [1,2,3,4,5,6]">
+                  <td class="text-center"><div class="skeleton-shimmer" style="width:16px;height:16px;border-radius:4px;"></div></td>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="skeleton-shimmer" style="width:34px;height:34px;border-radius:50%;"></div>
+                      <div>
+                        <div class="skeleton-shimmer mb-1" style="width:90px;height:14px;border-radius:4px;"></div>
+                        <div class="skeleton-shimmer" style="width:55px;height:12px;border-radius:4px;"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><div class="skeleton-shimmer" style="width:130px;height:20px;border-radius:12px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:45px;height:14px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:85px;height:14px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:110px;height:12px;border-radius:6px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:30px;height:18px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:75px;height:22px;border-radius:6px;"></div></td>
+                  <td class="text-end"><div class="skeleton-shimmer" style="width:65px;height:26px;border-radius:6px;"></div></td>
+                </tr>
+              </ng-container>
+
+              <ng-container *ngIf="!isLoading">
               <tr *ngFor="let t of filteredTrainers" [class.table-active]="selectedTrainerIds.has(t.id)">
                 <td class="text-center" data-label="Select">
                   <input
@@ -174,6 +208,7 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
                   </div>
                 </td>
               </tr>
+              </ng-container>
             </tbody>
           </table>
         </div>
@@ -250,12 +285,32 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
       (cancel)="showBulkDeleteConfirm = false"
       (confirm)="confirmBulkDelete()">
     </app-confirm-modal>
-  `
+  `,
+  styles: [`
+    .skeleton-shimmer {
+      background: linear-gradient(90deg, #edf2f7 25%, #e2e8f0 50%, #edf2f7 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      display: inline-block;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton-shimmer {
+        animation: none;
+        background: #e2e8f0;
+      }
+    }
+  `]
 })
 export class AdminTrainersComponent implements OnInit {
   trainers: Trainer[] = [];
   searchQuery: string = '';
   statusFilter: string = '';
+  isLoading: boolean = true;
+  hasError: boolean = false;
 
   showTrainerModal: boolean = false;
   selectedTrainerForEdit?: Trainer;
@@ -279,21 +334,31 @@ export class AdminTrainersComponent implements OnInit {
   }
 
   loadTrainers(): void {
+    this.isLoading = true;
+    this.hasError = false;
     this.adminService.getAllTrainersPaged(this.currentPage, this.pageSize).subscribe({
       next: res => {
+        this.isLoading = false;
         if (res.success) {
           this.pagedData = res.data;
           this.trainers = res.data.content;
           this.selectedTrainerIds.clear();
+          this.hasError = false;
         }
       },
       error: () => {
         this.adminService.getAllTrainers().subscribe({
           next: fallbackRes => {
+            this.isLoading = false;
             if (fallbackRes.success) {
               this.trainers = fallbackRes.data;
               this.selectedTrainerIds.clear();
+              this.hasError = false;
             }
+          },
+          error: () => {
+            this.isLoading = false;
+            this.hasError = true;
           }
         });
       }

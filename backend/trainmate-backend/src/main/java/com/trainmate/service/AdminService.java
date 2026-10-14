@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -96,15 +97,33 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public List<TrainerResponse> getAllTrainers() {
-        return trainerRepository.findAll().stream().map(this::mapToTrainerResponse).collect(Collectors.toList());
+        Map<Long, Integer> counts = getTrainerCohortCounts();
+        return trainerRepository.findAll().stream()
+                .map(t -> mapToTrainerResponse(t, counts.getOrDefault(t.getId(), 0)))
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<TrainerResponse> getAllTrainersPaged(Pageable pageable) {
-        return trainerRepository.findAll(pageable).map(this::mapToTrainerResponse);
+        Map<Long, Integer> counts = getTrainerCohortCounts();
+        return trainerRepository.findAll(pageable)
+                .map((Trainer t) -> this.mapToTrainerResponse(t, counts.getOrDefault(t.getId(), 0)));
+    }
+
+    private Map<Long, Integer> getTrainerCohortCounts() {
+        return cohortRepository.countCohortsGroupedByTrainer().stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> ((Number) row[1]).intValue(),
+                        (a, b) -> a
+                ));
     }
 
     public TrainerResponse mapToTrainerResponse(Trainer t) {
+        return mapToTrainerResponse(t, null);
+    }
+
+    public TrainerResponse mapToTrainerResponse(Trainer t, Integer prevCohortsCount) {
         TrainerResponse dto = new TrainerResponse();
         dto.setId(t.getId());
         dto.setUserId(t.getUser() != null ? t.getUser().getId() : null);
@@ -120,7 +139,7 @@ public class AdminService {
         dto.setCurrentWorkload(t.getCurrentWorkload());
         dto.setMaximumWorkload(t.getMaxWorkload());
         dto.setWorkloadRatio(t.getCurrentWorkload() + "/" + t.getMaxWorkload());
-        dto.setPreviouslyHandledCohorts((int) cohortRepository.countByAssignedTrainerId(t.getId()));
+        dto.setPreviouslyHandledCohorts(prevCohortsCount != null ? prevCohortsCount : (int) cohortRepository.countByAssignedTrainerId(t.getId()));
 
         if (t.getAvailableTill() != null && t.getAvailableTill().isBefore(LocalDate.now())) {
             dto.setStatus("UNAVAILABLE");
@@ -232,12 +251,41 @@ public class AdminService {
 
     @Transactional
     public CohortResponse overrideTrainer(Long cohortId, Long newTrainerId, String reason) {
-        Cohort cohort = cohortRepository.findById(cohortId)
+        // 1. Lock cohort first to maintain consistent lock hierarchy (Cohort -> Trainer)
+        Cohort cohort = cohortRepository.findByIdForUpdate(cohortId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cohort not found with ID: " + cohortId));
 
-        // Lock new trainer for update to prevent race conditions
-        Trainer newTrainer = trainerRepository.findByIdForUpdate(newTrainerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Trainer not found with ID: " + newTrainerId));
+        Long oldTrainerId = cohort.getAssignedTrainer() != null ? cohort.getAssignedTrainer().getId() : null;
+        if (oldTrainerId != null && oldTrainerId.equals(newTrainerId)) {
+            // Already assigned to this trainer, no workload adjustment or override needed
+            return cohortService.mapToResponse(cohort);
+        }
+
+        // 2. Lock trainers in deterministic numerical order by trainerId to prevent deadlocks
+        Trainer lockedOldTrainer = null;
+        Trainer newTrainer = null;
+
+        if (oldTrainerId != null) {
+            Long firstLockId = Math.min(oldTrainerId, newTrainerId);
+            Long secondLockId = Math.max(oldTrainerId, newTrainerId);
+
+            Trainer firstTrainer = trainerRepository.findByIdForUpdate(firstLockId).orElse(null);
+            Trainer secondTrainer = trainerRepository.findByIdForUpdate(secondLockId).orElse(null);
+
+            if (firstLockId.equals(newTrainerId)) {
+                newTrainer = firstTrainer;
+                lockedOldTrainer = secondTrainer;
+            } else {
+                lockedOldTrainer = firstTrainer;
+                newTrainer = secondTrainer;
+            }
+        } else {
+            newTrainer = trainerRepository.findByIdForUpdate(newTrainerId).orElse(null);
+        }
+
+        if (newTrainer == null) {
+            throw new ResourceNotFoundException("Trainer not found with ID: " + newTrainerId);
+        }
 
         // Check eligibility: workload, availability, skills
         TrainerScore score = allocationScorer.evaluate(newTrainer, cohort);
@@ -245,32 +293,27 @@ public class AdminService {
             throw new InvalidTrainerException("Trainer not eligible: " + score.getIneligibilityReason());
         }
 
-        Trainer oldTrainer = cohort.getAssignedTrainer();
-        if (oldTrainer != null && oldTrainer.getId().equals(newTrainerId)) {
-            // Already assigned to this trainer, no workload adjustment or override needed
-            return cohortService.mapToResponse(cohort);
-        }
-
-        // Decrement workload of previous trainer (with lock)
-        if (oldTrainer != null) {
-            Trainer lockedOldTrainer = trainerRepository.findByIdForUpdate(oldTrainer.getId()).orElse(null);
-            if (lockedOldTrainer != null) {
-                lockedOldTrainer.setCurrentWorkload(Math.max(0, lockedOldTrainer.getCurrentWorkload() - 1));
-                trainerRepository.save(lockedOldTrainer);
-            }
+        // Decrement workload of previous trainer
+        if (lockedOldTrainer != null) {
+            lockedOldTrainer.setCurrentWorkload(Math.max(0, lockedOldTrainer.getCurrentWorkload() - 1));
+            trainerRepository.save(lockedOldTrainer);
         }
 
         // Increment workload of new trainer
         newTrainer.setCurrentWorkload(newTrainer.getCurrentWorkload() + 1);
         trainerRepository.save(newTrainer);
 
-        // Assign new trainer
+        // Assign new trainer and persist explainable breakdown
         cohort.setAssignedTrainer(newTrainer);
         cohort.setStatus(CohortStatus.ASSIGNED);
+        cohort.setAllocationScore(score.getTotalScore());
+        cohort.setAllocationExplanation(reason != null && !reason.trim().isEmpty() ? "Manual Override: " + reason.trim() : "Admin manual reassignment");
+        cohort.setAllocationType("MANUAL_OVERRIDE");
+        cohort.setAllocationDate(java.time.LocalDateTime.now());
         Cohort saved = cohortRepository.save(cohort);
 
         // Send mails
-        notificationService.notifyReassigned(saved, oldTrainer, newTrainer, reason);
+        notificationService.notifyReassigned(saved, lockedOldTrainer, newTrainer, reason);
 
         return cohortService.mapToResponse(saved);
     }

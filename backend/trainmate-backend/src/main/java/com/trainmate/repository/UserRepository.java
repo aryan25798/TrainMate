@@ -14,4 +14,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u WHERE u.email = :identifier OR u.name = :identifier OR u.email LIKE CONCAT(:identifier, '@%') ORDER BY CASE WHEN u.email = :identifier THEN 1 WHEN u.name = :identifier THEN 2 ELSE 3 END ASC, u.id ASC")
     java.util.List<User> findByIdentifier(@Param("identifier") String identifier);
+
+    java.util.List<User> findByRole(com.trainmate.entity.Role role);
 }

@@ -625,7 +625,7 @@ export class CoachUploadComponent {
         a.href = url;
         a.download = 'cohort_template.xlsx';
         a.click();
-        window.URL.revokeObjectURL(url);
+        setTimeout(() => window.URL.revokeObjectURL(url), 1000);
       },
       error: () => {
         this.errorMessage = 'Could not download template.';

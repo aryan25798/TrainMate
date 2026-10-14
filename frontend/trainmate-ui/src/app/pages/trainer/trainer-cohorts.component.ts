@@ -5,11 +5,12 @@ import { TrainerService } from '../../services/trainer.service';
 import { AuthService } from '../../services/auth.service';
 import { Cohort } from '../../models/models';
 import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.component';
+import { ErrorCardComponent } from '../../shared/error-card.component';
 
 @Component({
   selector: 'app-trainer-cohorts',
   standalone: true,
-  imports: [CommonModule, FormsModule, CohortDetailsModalComponent],
+  imports: [CommonModule, FormsModule, CohortDetailsModalComponent, ErrorCardComponent],
   template: `
     <div>
       <div class="page-header">
@@ -52,8 +53,17 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
         </div>
       </div>
 
+      <!-- Error State with Retry -->
+      <app-error-card
+        *ngIf="hasError"
+        title="Unable to load cohorts"
+        message="A network error occurred or the cloud server is waking up. Click below to retry."
+        [isRetrying]="isLoading"
+        (retry)="loadCohorts()">
+      </app-error-card>
+
       <!-- Table of Cohorts -->
-      <div class="content-card">
+      <div class="content-card" *ngIf="!hasError">
         <div class="table-responsive">
           <table class="table table-hover align-middle">
             <thead>
@@ -69,6 +79,21 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
               </tr>
             </thead>
             <tbody>
+              <!-- Skeleton Loading Rows -->
+              <ng-container *ngIf="isLoading">
+                <tr *ngFor="let i of [1,2,3,4,5]">
+                  <td><div class="skeleton-shimmer" style="width:100px;height:16px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:75px;height:20px;border-radius:12px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:90px;height:14px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:30px;height:14px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:85px;height:14px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:80px;height:14px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:75px;height:24px;border-radius:6px;"></div></td>
+                  <td class="text-end"><div class="skeleton-shimmer" style="width:32px;height:28px;border-radius:6px;"></div></td>
+                </tr>
+              </ng-container>
+
+              <ng-container *ngIf="!isLoading">
               <tr *ngFor="let c of filteredCohorts">
                 <td class="fw-bold text-dark text-nowrap" data-label="Cohort Code">{{ c.cohortCode }}</td>
                 <td data-label="Required Skill"><span class="badge-tag">{{ c.requiredSkill }}</span></td>
@@ -102,6 +127,7 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
                   </div>
                 </td>
               </tr>
+              </ng-container>
             </tbody>
           </table>
         </div>
@@ -154,12 +180,32 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
       [cohort]="selectedCohort"
       (close)="selectedCohort = null">
     </app-cohort-details-modal>
-  `
+  `,
+  styles: [`
+    .skeleton-shimmer {
+      background: linear-gradient(90deg, #edf2f7 25%, #e2e8f0 50%, #edf2f7 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      display: inline-block;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton-shimmer {
+        animation: none;
+        background: #e2e8f0;
+      }
+    }
+  `]
 })
 export class TrainerCohortsComponent implements OnInit {
   cohorts: Cohort[] = [];
   searchQuery: string = '';
   statusFilter: string = '';
+  isLoading: boolean = true;
+  hasError: boolean = false;
   selectedCohort: Cohort | null = null;
   pagedData: any = null;
   currentPage: number = 0;
@@ -180,21 +226,34 @@ export class TrainerCohortsComponent implements OnInit {
     const trainerId = user?.trainerId;
     if (!trainerId) {
       console.warn('No trainerId found in user session');
+      this.isLoading = false;
       return;
     }
+
+    this.isLoading = true;
+    this.hasError = false;
+
     this.trainerService.getCohortsPaged(trainerId, this.currentPage, this.pageSize).subscribe({
       next: res => {
+        this.isLoading = false;
         if (res.success) {
           this.pagedData = res.data;
           this.cohorts = res.data.content;
+          this.hasError = false;
         }
       },
       error: () => {
         this.trainerService.getCohorts(trainerId).subscribe({
           next: fallbackRes => {
+            this.isLoading = false;
             if (fallbackRes.success) {
               this.cohorts = fallbackRes.data;
+              this.hasError = false;
             }
+          },
+          error: () => {
+            this.isLoading = false;
+            this.hasError = true;
           }
         });
       }

@@ -99,7 +99,7 @@ public class AdminController {
     public ResponseEntity<ApiResponse<CohortResponse>> reassignTrainer(
             @PathVariable Long cohortId,
             @Valid @RequestBody TrainerOverrideRequest request,
-            @RequestParam(name = "adminUserId", defaultValue = "6") Long adminUserId
+            @RequestParam(name = "adminUserId", required = false) Long adminUserId
     ) {
         CohortResponse updated = adminService.reassignTrainer(cohortId, request.getTrainerId(), adminUserId, request.getReason());
         return ResponseEntity.ok(ApiResponse.success("Trainer reassigned successfully", updated));

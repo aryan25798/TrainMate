@@ -40,6 +40,22 @@ public class Cohort {
     @Column(name = "vertical", length = 100)
     private String vertical;
 
+    @Version
+    @Column(name = "version")
+    private Long version;
+
+    @Column(name = "allocation_score")
+    private Double allocationScore;
+
+    @Column(name = "allocation_explanation", length = 1000)
+    private String allocationExplanation;
+
+    @Column(name = "allocation_type", length = 30)
+    private String allocationType;
+
+    @Column(name = "allocation_date")
+    private LocalDateTime allocationDate;
+
     @Column(name = "updated_date")
     private LocalDateTime updatedDate;
 
@@ -207,5 +223,45 @@ public class Cohort {
 
     public void setCreatedDate(LocalDateTime createdDate) {
         this.createdDate = createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
+    }
+
+    public Double getAllocationScore() {
+        return allocationScore;
+    }
+
+    public void setAllocationScore(Double allocationScore) {
+        this.allocationScore = allocationScore;
+    }
+
+    public String getAllocationExplanation() {
+        return allocationExplanation;
+    }
+
+    public void setAllocationExplanation(String allocationExplanation) {
+        this.allocationExplanation = allocationExplanation;
+    }
+
+    public String getAllocationType() {
+        return allocationType;
+    }
+
+    public void setAllocationType(String allocationType) {
+        this.allocationType = allocationType;
+    }
+
+    public LocalDateTime getAllocationDate() {
+        return allocationDate;
+    }
+
+    public void setAllocationDate(LocalDateTime allocationDate) {
+        this.allocationDate = allocationDate;
     }
 }

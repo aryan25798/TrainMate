@@ -44,4 +44,7 @@ public interface CohortRepository extends JpaRepository<Cohort, Long> {
 
     // Admin Dashboard Counts
     long countByStatus(CohortStatus status);
+
+    @Query("SELECT c.assignedTrainer.id, COUNT(c) FROM Cohort c WHERE c.assignedTrainer IS NOT NULL GROUP BY c.assignedTrainer.id")
+    List<Object[]> countCohortsGroupedByTrainer();
 }

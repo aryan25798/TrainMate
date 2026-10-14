@@ -34,6 +34,10 @@ public class User {
     @Column(name = "updated_by")
     private Long updatedBy;
 
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     @PrePersist
     protected void onCreate() {
         if (createdDate == null) {
@@ -113,5 +117,13 @@ public class User {
 
     public void setUpdatedBy(Long updatedBy) {
         this.updatedBy = updatedBy;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 }

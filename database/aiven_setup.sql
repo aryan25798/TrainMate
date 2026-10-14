@@ -22,8 +22,10 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(150) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     role ENUM('COACH', 'TRAINER', 'ADMIN') NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_users_email (email),
+    updated_date TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+    updated_by BIGINT NULL,
     INDEX idx_users_role (role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -37,11 +39,14 @@ CREATE TABLE IF NOT EXISTS trainer (
     available_till DATE NOT NULL,
     current_workload INT NOT NULL DEFAULT 0,
     max_workload INT NOT NULL DEFAULT 5,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_date TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+    updated_by BIGINT NULL,
     CONSTRAINT fk_trainer_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     INDEX idx_trainer_user_id (user_id),
-    INDEX idx_trainer_available_dates (available_from, available_till),
-    INDEX idx_trainer_workload (current_workload, max_workload),
-    INDEX idx_trainer_availability_workload (available_from, available_till, current_workload, max_workload)
+    INDEX idx_trainer_availability_workload (available_from, available_till, current_workload, max_workload),
+    INDEX idx_trainer_workload (current_workload, max_workload)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4. COHORT Table
@@ -55,16 +60,26 @@ CREATE TABLE IF NOT EXISTS cohort (
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     location VARCHAR(100) NOT NULL,
+    vertical VARCHAR(100) DEFAULT 'General',
     coach_user_id BIGINT NOT NULL,
     assigned_trainer_id BIGINT NULL,
     status ENUM('PENDING', 'PROCESSING', 'ASSIGNED', 'UNASSIGNED', 'ACTIVE', 'COMPLETED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
+    allocation_score DOUBLE NULL,
+    allocation_explanation VARCHAR(1000) NULL,
+    allocation_type VARCHAR(30) NULL,
+    allocation_date TIMESTAMP NULL,
+    version BIGINT NOT NULL DEFAULT 0,
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_date TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+    updated_by BIGINT NULL,
     CONSTRAINT fk_cohort_coach FOREIGN KEY (coach_user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     CONSTRAINT fk_cohort_trainer FOREIGN KEY (assigned_trainer_id) REFERENCES trainer(trainer_id) ON DELETE SET NULL,
     INDEX idx_cohort_coach_user_id (coach_user_id),
     INDEX idx_cohort_assigned_trainer_id (assigned_trainer_id),
     INDEX idx_cohort_status (status),
     INDEX idx_cohort_dates (start_date, end_date),
+    INDEX idx_cohort_vertical (vertical),
+    INDEX idx_cohort_service_line_status (service_line, status),
     INDEX idx_cohort_coach_status (coach_user_id, status),
     INDEX idx_cohort_trainer_status (assigned_trainer_id, status),
     INDEX idx_cohort_coach_status_dates (coach_user_id, status, start_date)
@@ -81,7 +96,6 @@ CREATE TABLE IF NOT EXISTS notification (
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_notif_cohort FOREIGN KEY (cohort_id) REFERENCES cohort(cohort_id) ON DELETE SET NULL,
     CONSTRAINT fk_notif_receiver FOREIGN KEY (receiver_user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    INDEX idx_notification_receiver (receiver_user_id),
     INDEX idx_notification_cohort (cohort_id),
     INDEX idx_notification_unread (receiver_user_id, is_read),
     INDEX idx_notification_date (created_date)
@@ -89,7 +103,7 @@ CREATE TABLE IF NOT EXISTS notification (
 
 -- 6. SEED DATA
 
--- Seed Users (Passwords support both role presets and password123)
+-- Seed Users
 INSERT INTO users (user_id, name, email, password, role) VALUES
 (1, 'Amit Sharma', 'coach01@cognizant.com', 'coach123', 'COACH'),
 (2, 'Sneha Patel', 'coach02@cognizant.com', 'coach123', 'COACH'),
@@ -105,10 +119,10 @@ INSERT INTO trainer (trainer_id, user_id, skill_set, experience_years, available
 (3, 5, 'Spring Boot, Java, Microservices', 7.0, '2026-08-01', '2026-12-31', 0, 5);
 
 -- Seed Cohorts
-INSERT INTO cohort (cohort_id, cohort_code, service_line, stream, required_skill, trainee_count, start_date, end_date, location, coach_user_id, assigned_trainer_id, status) VALUES
-(1, 'QEA26SD001', 'QEA', 'Software Development', 'Java, Spring Boot', 50, '2026-09-01', '2026-11-30', 'Chennai', 1, 1, 'ASSIGNED'),
-(2, 'QEA26SD002', 'QEA', 'Web Development', 'Angular, JavaScript', 45, '2026-09-15', '2026-11-15', 'Pune', 1, 2, 'ASSIGNED'),
-(3, 'QEA26SD003', 'QEA', 'Software Development', 'Golang, Kubernetes', 35, '2026-10-01', '2026-12-31', 'Bangalore', 1, NULL, 'UNASSIGNED');
+INSERT INTO cohort (cohort_id, cohort_code, service_line, stream, required_skill, trainee_count, start_date, end_date, location, vertical, coach_user_id, assigned_trainer_id, status, allocation_score, allocation_explanation, allocation_type, allocation_date) VALUES
+(1, 'QEA26SD001', 'QEA', 'Software Development', 'Java, Spring Boot', 50, '2026-09-01', '2026-11-30', 'Chennai', 'Healthcare', 1, 1, 'ASSIGNED', 87.0, 'Skill Match: 40.0/40, Availability: 20.0/20, Workload: 12.0/15, Experience: 10.0/15, Previous Cohorts: 5.0/10', 'AUTOMATIC', CURRENT_TIMESTAMP),
+(2, 'QEA26SD002', 'QEA', 'Web Development', 'Angular, JavaScript', 45, '2026-09-15', '2026-11-15', 'Pune', 'Banking', 1, 2, 'ASSIGNED', 85.0, 'Skill Match: 40.0/40, Availability: 20.0/20, Workload: 12.0/15, Experience: 10.0/15, Previous Cohorts: 3.0/10', 'AUTOMATIC', CURRENT_TIMESTAMP),
+(3, 'QEA26SD003', 'QEA', 'Software Development', 'Golang, Kubernetes', 35, '2026-10-01', '2026-12-31', 'Bangalore', 'Insurance', 1, NULL, 'UNASSIGNED', NULL, NULL, NULL, NULL);
 
 -- Seed Notifications
 INSERT INTO notification (notification_id, cohort_id, receiver_user_id, notification_type, message, is_read) VALUES

@@ -94,8 +94,17 @@ public class CohortService {
      */
     @Transactional
     public CohortResponse updateCohort(Long cohortId, CreateCohortRequest request) {
-        Cohort cohort = cohortRepository.findById(cohortId)
+        if (request.getStartDate() != null && request.getEndDate() != null
+                && request.getEndDate().isBefore(request.getStartDate())) {
+            throw new com.trainmate.exception.AllocationException("End date cannot be before start date");
+        }
+
+        Cohort cohort = cohortRepository.findByIdForUpdate(cohortId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cohort not found with ID: " + cohortId));
+
+        boolean criteriaChanged = (request.getRequiredSkill() != null && !request.getRequiredSkill().trim().equalsIgnoreCase(cohort.getRequiredSkill()))
+                || (request.getStartDate() != null && !request.getStartDate().equals(cohort.getStartDate()))
+                || (request.getEndDate() != null && !request.getEndDate().equals(cohort.getEndDate()));
 
         cohort.setServiceLine(request.getServiceLine());
         cohort.setStream(request.getStream());
@@ -108,6 +117,26 @@ public class CohortService {
         cohort.setUpdatedDate(java.time.LocalDateTime.now());
 
         Cohort saved = cohortRepository.save(cohort);
+
+        // If criteria changed and trainer was assigned, recheck eligibility
+        if (criteriaChanged && saved.getAssignedTrainer() != null) {
+            Trainer currentTrainer = saved.getAssignedTrainer();
+            com.trainmate.allocation.TrainerScore score = allocationScorer.evaluate(currentTrainer, saved);
+            if (!score.isEligible()) {
+                // Release current trainer's workload and reallocate
+                Trainer lockedTrainer = trainerRepository.findByIdForUpdate(currentTrainer.getId()).orElse(null);
+                if (lockedTrainer != null) {
+                    lockedTrainer.setCurrentWorkload(Math.max(0, lockedTrainer.getCurrentWorkload() - 1));
+                    trainerRepository.save(lockedTrainer);
+                }
+                saved.setAssignedTrainer(null);
+                saved.setStatus(CohortStatus.PENDING);
+                saved = cohortRepository.save(saved);
+                trainerAllocationService.allocateTrainer(saved);
+                saved = cohortRepository.findById(saved.getId()).orElse(saved);
+            }
+        }
+
         return mapToResponse(saved);
     }
 
@@ -117,7 +146,7 @@ public class CohortService {
      */
     @Transactional
     public CohortResponse updateCohortStatus(Long cohortId, String statusStr) {
-        Cohort cohort = cohortRepository.findById(cohortId)
+        Cohort cohort = cohortRepository.findByIdForUpdate(cohortId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cohort not found with ID: " + cohortId));
 
         CohortStatus newStatus = CohortStatus.valueOf(statusStr.toUpperCase());
@@ -127,9 +156,14 @@ public class CohortService {
             // Free assigned trainer capacity
             if (cohort.getAssignedTrainer() != null) {
                 Trainer trainer = cohort.getAssignedTrainer();
-                trainer.setCurrentWorkload(Math.max(0, trainer.getCurrentWorkload() - 1));
-                trainerRepository.save(trainer);
+                Trainer lockedTrainer = trainerRepository.findByIdForUpdate(trainer.getId()).orElse(null);
+                if (lockedTrainer != null) {
+                    lockedTrainer.setCurrentWorkload(Math.max(0, lockedTrainer.getCurrentWorkload() - 1));
+                    trainerRepository.save(lockedTrainer);
+                }
                 cohort.setAssignedTrainer(null);
+                cohort.setAllocationScore(null);
+                cohort.setAllocationExplanation("Cancelled - Trainer released");
             }
         }
 
@@ -144,7 +178,7 @@ public class CohortService {
      */
     @Transactional
     public CohortResponse reallocateTrainer(Long cohortId) {
-        Cohort cohort = cohortRepository.findById(cohortId)
+        Cohort cohort = cohortRepository.findByIdForUpdate(cohortId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cohort not found with ID: " + cohortId));
 
         // Release old trainer's workload if assigned (with lock)
@@ -157,7 +191,7 @@ public class CohortService {
             }
             cohort.setAssignedTrainer(null);
             cohort.setStatus(CohortStatus.PENDING);
-            cohortRepository.save(cohort);
+            cohort = cohortRepository.save(cohort);
         }
 
         // Run allocation engine
@@ -197,12 +231,16 @@ public class CohortService {
                 dto.setAssignedTrainerName(c.getAssignedTrainer().getUser().getName());
             }
 
-            // Generate explainable 100-point score breakdown
-            ScoreBreakdownDTO breakdown = allocationScorer.calculateBreakdown(c.getAssignedTrainer(), c);
-            dto.setAllocationScore(breakdown.getTotalScore());
-            dto.setScoreBreakdown(breakdown);
-            dto.setAllocationType("AUTOMATIC");
-            dto.setAllocationDate(c.getCreatedDate());
+            dto.setAllocationScore(c.getAllocationScore());
+            dto.setAllocationType(c.getAllocationType() != null ? c.getAllocationType() : "AUTOMATIC");
+            dto.setAllocationDate(c.getAllocationDate() != null ? c.getAllocationDate() : c.getCreatedDate());
+
+            if (c.getAllocationExplanation() != null) {
+                ScoreBreakdownDTO breakdown = new ScoreBreakdownDTO();
+                breakdown.setTotalScore(c.getAllocationScore() != null ? c.getAllocationScore() : 0.0);
+                breakdown.setExplanation(c.getAllocationExplanation());
+                dto.setScoreBreakdown(breakdown);
+            }
         }
 
         return dto;
