@@ -16,4 +16,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     java.util.List<User> findByIdentifier(@Param("identifier") String identifier);
 
     java.util.List<User> findByRole(com.trainmate.entity.Role role);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("DELETE FROM User u WHERE u.id IN :userIds")
+    int deleteByIdIn(@Param("userIds") java.util.List<Long> userIds);
 }

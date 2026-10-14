@@ -236,17 +236,41 @@ public class AdminService {
         }
     }
 
+    /**
+     * Set-based batch bulk deletion of multiple trainers.
+     * Unassigns cohorts in 1 batch query, removes notifications in 1 batch query,
+     * and deletes trainers and users in constant O(1) set-based queries instead of iterative loops.
+     */
     @Transactional
     public int bulkDeleteTrainers(List<Long> trainerIds) {
         if (trainerIds == null || trainerIds.isEmpty()) return 0;
-        int count = 0;
-        for (Long id : trainerIds) {
-            try {
-                deleteTrainer(id);
-                count++;
-            } catch (ResourceNotFoundException ignored) {}
+
+        // 1. Fetch trainer entities to collect linked user IDs
+        List<Trainer> trainers = trainerRepository.findAllById(trainerIds);
+        if (trainers.isEmpty()) return 0;
+
+        List<Long> userIds = trainers.stream()
+                .filter(t -> t.getUser() != null)
+                .map(t -> t.getUser().getId())
+                .collect(Collectors.toList());
+
+        // 2. Unassign all cohorts assigned to these trainers in 1 set query
+        cohortRepository.unassignTrainersIn(trainerIds);
+
+        // 3. Batch delete notifications for the associated users in 1 set query
+        if (!userIds.isEmpty()) {
+            notificationRepository.deleteByReceiverUserIdIn(userIds);
         }
-        return count;
+
+        // 4. Batch delete trainers in 1 set query
+        int deletedCount = trainerRepository.deleteByIdIn(trainerIds);
+
+        // 5. Batch delete users in 1 set query
+        if (!userIds.isEmpty()) {
+            userRepository.deleteByIdIn(userIds);
+        }
+
+        return deletedCount;
     }
 
     @Transactional

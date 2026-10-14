@@ -398,16 +398,30 @@ export class AdminTrainersComponent implements OnInit {
     this.showBulkDeleteConfirm = false;
     if (ids.length === 0) return;
 
+    // Optimistic UI update: Instantly remove deleted trainers from view in memory
+    const previousTrainers = [...this.trainers];
+    const previousSelected = new Set(this.selectedTrainerIds);
+    this.selectedTrainerIds.clear();
+    this.trainers = this.trainers.filter(t => !ids.includes(t.id));
+
     this.adminService.bulkDeleteTrainers(ids).subscribe({
       next: res => {
         if (res.success) {
           this.toastService.success(`Successfully deleted ${res.data} trainer(s). Cohort assignments were released.`);
-          this.selectedTrainerIds.clear();
-          this.loadTrainers();
+          this.adminService.getAllTrainersPaged(this.currentPage, this.pageSize).subscribe({
+            next: r => {
+              if (r.success) {
+                this.pagedData = r.data;
+                this.trainers = r.data.content;
+              }
+            }
+          });
         }
       },
       error: () => {
-        this.toastService.error(`Failed to delete selected trainers.`);
+        this.trainers = previousTrainers;
+        this.selectedTrainerIds = previousSelected;
+        this.toastService.error(`Failed to delete selected trainers. Changes were rolled back.`);
       }
     });
   }
@@ -481,14 +495,18 @@ export class AdminTrainersComponent implements OnInit {
     const id = this.trainerToDelete.id;
     this.trainerToDelete = null;
 
+    // Optimistic UI update: Instantly remove trainer from view in memory
+    const previousTrainers = [...this.trainers];
+    this.trainers = this.trainers.filter(t => t.id !== id);
+
     this.adminService.deleteTrainer(id).subscribe({
       next: res => {
         if (res.success) {
           this.toastService.success(`Trainer ${name} deleted successfully.`);
-          this.loadTrainers();
         }
       },
       error: () => {
+        this.trainers = previousTrainers;
         this.toastService.error(`Failed to delete trainer.`);
       }
     });

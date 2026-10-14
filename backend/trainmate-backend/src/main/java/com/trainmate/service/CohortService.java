@@ -72,21 +72,29 @@ public class CohortService {
     }
 
     /**
-     * Bulk deletes multiple cohorts and safely decrements workload for assigned trainers.
+     * Set-based batch bulk deletion of multiple cohorts.
+     * Decrements assigned trainer workloads in aggregated batch, removes linked notifications,
+     * and deletes cohorts in constant O(1) set-based queries instead of iterative loops.
      */
     @Transactional
     public int bulkDeleteCohorts(List<Long> cohortIds) {
         if (cohortIds == null || cohortIds.isEmpty()) return 0;
-        int count = 0;
-        for (Long id : cohortIds) {
-            try {
-                deleteCohort(id);
-                count++;
-            } catch (ResourceNotFoundException ignored) {
-                // Already deleted
+
+        // 1. Calculate affected trainer workload decrements in a single aggregated GROUP BY query
+        List<Object[]> trainerWorkloadCounts = cohortRepository.countAssignedCohortsByTrainer(cohortIds);
+        for (Object[] row : trainerWorkloadCounts) {
+            Long trainerId = (Long) row[0];
+            Long count = (Long) row[1];
+            if (trainerId != null && count != null && count > 0) {
+                trainerRepository.decrementWorkload(trainerId, count.intValue());
             }
         }
-        return count;
+
+        // 2. Bulk delete linked notifications in 1 set query
+        notificationRepository.deleteByCohortIdIn(cohortIds);
+
+        // 3. Bulk delete cohorts in 1 set query
+        return cohortRepository.deleteByIdIn(cohortIds);
     }
 
     /**

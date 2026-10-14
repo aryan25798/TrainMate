@@ -47,4 +47,17 @@ public interface CohortRepository extends JpaRepository<Cohort, Long> {
 
     @Query("SELECT c.assignedTrainer.id, COUNT(c) FROM Cohort c WHERE c.assignedTrainer IS NOT NULL GROUP BY c.assignedTrainer.id")
     List<Object[]> countCohortsGroupedByTrainer();
+
+    @Query("SELECT c.assignedTrainer.id, COUNT(c) FROM Cohort c WHERE c.id IN :cohortIds AND c.assignedTrainer IS NOT NULL GROUP BY c.assignedTrainer.id")
+    List<Object[]> countAssignedCohortsByTrainer(@Param("cohortIds") List<Long> cohortIds);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("DELETE FROM Cohort c WHERE c.id IN :cohortIds")
+    int deleteByIdIn(@Param("cohortIds") List<Long> cohortIds);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("UPDATE Cohort c SET c.assignedTrainer = null, c.status = com.trainmate.entity.CohortStatus.UNASSIGNED WHERE c.assignedTrainer.id IN :trainerIds")
+    int unassignTrainersIn(@Param("trainerIds") List<Long> trainerIds);
 }

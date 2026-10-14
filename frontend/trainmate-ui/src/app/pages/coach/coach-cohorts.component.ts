@@ -465,14 +465,20 @@ export class CoachCohortsComponent implements OnInit {
     const id = this.cohortToDelete.id;
     this.cohortToDelete = null;
 
+    // Optimistic UI update: Instantly remove cohort from view in memory
+    const previousCohorts = [...this.cohorts];
+    this.cohorts = this.cohorts.filter(c => c.id !== id);
+    this.applyFilter();
+
     this.cohortService.deleteCohort(id).subscribe({
       next: res => {
         if (res.success) {
           this.toastService.success(`Cohort ${code} deleted and trainer workload capacity released.`);
-          this.loadCohorts();
         }
       },
       error: () => {
+        this.cohorts = previousCohorts;
+        this.applyFilter();
         this.toastService.error(`Failed to delete cohort.`);
       }
     });
@@ -511,16 +517,37 @@ export class CoachCohortsComponent implements OnInit {
     this.showBulkDeleteConfirm = false;
     if (ids.length === 0) return;
 
+    // Optimistic UI update: Instantly remove deleted cohorts from view in memory
+    const previousCohorts = [...this.cohorts];
+    const previousSelected = new Set(this.selectedCohortIds);
+    this.selectedCohortIds.clear();
+    this.cohorts = this.cohorts.filter(c => !ids.includes(c.id));
+    this.applyFilter();
+
     this.cohortService.bulkDeleteCohorts(ids).subscribe({
       next: res => {
         if (res.success) {
           this.toastService.success(`Successfully deleted ${res.data} cohort(s) and released trainer workloads.`);
-          this.selectedCohortIds.clear();
-          this.loadCohorts();
+          const user = this.authService.currentUserValue;
+          const coachId = user?.coachId ?? user?.userId;
+          if (coachId) {
+            this.coachService.getCohortsPaged(coachId, this.currentPage, this.pageSize).subscribe({
+              next: r => {
+                if (r.success) {
+                  this.pagedData = r.data;
+                  this.cohorts = r.data.content;
+                  this.applyFilter();
+                }
+              }
+            });
+          }
         }
       },
       error: () => {
-        this.toastService.error(`Failed to delete selected cohorts.`);
+        this.cohorts = previousCohorts;
+        this.selectedCohortIds = previousSelected;
+        this.applyFilter();
+        this.toastService.error(`Failed to delete selected cohorts. Changes were rolled back.`);
       }
     });
   }
