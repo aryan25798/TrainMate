@@ -232,63 +232,64 @@ html, body {
 }
 
 /* Desktop & Mobile Sidebar Drawer */
+/* Desktop & Mobile Sidebar Drawer */
 .app-sidebar {
-  width: 250px;
+  width: 240px;
   height: 100%;
-  background: linear-gradient(180deg, #000038 0%, #070c24 100%);
-  color: #94a3b8;
+  background: #090e24;
+  color: #8fa0b8;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 4px 0 20px rgba(0, 0, 56, 0.15);
-  transition: margin-left 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 2px 0 12px rgba(0, 0, 40, 0.08);
+  transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   z-index: 1040;
 }
 
-/* Desktop Collapsed Mode (Slides smoothly off to the left, giving 100% space) */
+/* Desktop Collapsed Mode */
 .app-sidebar.desktop-collapsed {
-  margin-left: -250px;
+  margin-left: -240px;
 }
 
 /* Sidebar User Info Card */
 .sidebar-user-card {
-  padding: 0.85rem;
-  margin: 1rem 0.85rem 0.5rem 0.85rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-md);
+  padding: 0.75rem 0.85rem;
+  margin: 0.75rem 0.75rem 0.25rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
 
 .sidebar-user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--cognizant-cyan) 0%, var(--cognizant-blue) 100%);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--cognizant-blue) 0%, #004ecc 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: 0.95rem;
-  box-shadow: 0 4px 10px rgba(0, 102, 245, 0.3);
+  font-weight: 600;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 6px rgba(0, 102, 245, 0.25);
   flex-shrink: 0;
 }
 
 .sidebar-user-name {
   font-weight: 600;
-  color: #f8fafc;
-  font-size: 0.875rem;
+  color: #f1f5f9;
+  font-size: 0.825rem;
 }
 
 .sidebar-user-role {
-  font-size: 0.685rem;
+  font-size: 0.65rem;
   color: #38bdf8;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-weight: 600;
 }
 
 /* Sidebar Navigation Items */
@@ -302,15 +303,15 @@ html, body {
 .nav-item-link {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  margin: 0.25rem 0.85rem;
-  color: #94a3b8;
+  gap: 0.65rem;
+  padding: 0.6rem 0.85rem;
+  margin: 0.15rem 0.65rem;
+  color: #8fa0b8;
   text-decoration: none;
-  border-radius: 10px;
+  border-radius: 8px;
   font-weight: 500;
-  font-size: 0.9rem;
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 0.84rem;
+  transition: all 0.15s ease;
   cursor: pointer;
   border: 1px solid transparent;
   white-space: nowrap;
@@ -318,39 +319,39 @@ html, body {
 }
 
 .nav-item-link:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.05);
   color: #ffffff;
-  transform: translateX(4px);
+  transform: none;
 }
 
 .nav-item-link.active {
-  background: linear-gradient(135deg, rgba(0, 102, 245, 0.95) 0%, rgba(0, 78, 204, 0.95) 100%);
+  background: rgba(0, 102, 245, 0.18);
   color: #ffffff;
   font-weight: 600;
-  box-shadow: 0 4px 16px rgba(0, 102, 245, 0.35);
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(0, 102, 245, 0.35);
 }
 
 .nav-item-link.active::before {
   content: '';
   position: absolute;
-  left: -2px;
-  top: 20%;
-  bottom: 20%;
-  width: 4px;
-  border-radius: 0 4px 4px 0;
-  background: #38bdf8;
-  box-shadow: 0 0 8px #38bdf8;
+  left: 0;
+  top: 25%;
+  bottom: 25%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--cognizant-blue);
+  box-shadow: 0 0 6px var(--cognizant-blue);
 }
 
 .nav-item-link i {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   flex-shrink: 0;
+  opacity: 0.85;
 }
 
 .sidebar-bottom-action {
-  padding: 0.85rem 0.85rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.65rem 0.65rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
 }
 
@@ -505,45 +506,46 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.65rem;
-  gap: 1rem;
+  margin-bottom: 1.35rem;
+  gap: 0.85rem;
   flex-wrap: wrap;
 }
 
 .page-title {
-  font-size: 1.65rem;
-  font-weight: 800;
+  font-size: 1.35rem;
+  font-weight: 700;
   color: var(--text-main);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   margin: 0;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .page-subtitle {
   color: var(--text-muted);
-  font-size: 0.925rem;
-  margin-top: 0.25rem;
+  font-size: 0.84rem;
+  margin-top: 0.2rem;
   margin-bottom: 0;
+  line-height: 1.4;
 }
 
 /* Modern Enterprise Stats Grid */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 1.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.4rem;
 }
 
 .stat-card {
   background: #ffffff;
-  border-radius: var(--radius-lg);
-  padding: 1.35rem 1.5rem;
+  border-radius: var(--radius-md);
+  padding: 1.1rem 1.25rem;
   border: 1px solid rgba(226, 232, 240, 0.85);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02), 0 3px 8px -2px rgba(15, 23, 42, 0.03);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
 }
@@ -561,8 +563,8 @@ html, body {
 }
 
 .stat-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 24px -4px rgba(0, 30, 80, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px -4px rgba(0, 30, 80, 0.07);
   border-color: #cbd5e1;
 }
 
@@ -571,31 +573,31 @@ html, body {
 }
 
 .stat-title {
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   color: #64748b;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.25rem;
 }
 
 .stat-value {
-  font-size: 1.85rem;
-  font-weight: 800;
+  font-size: 1.45rem;
+  font-weight: 700;
   color: var(--text-main);
-  line-height: 1.1;
+  line-height: 1.15;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
 .stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   flex-shrink: 0;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -1122,14 +1124,22 @@ html, body {
 @media (max-width: 767.98px) {
   .modal-overlay {
     padding: 0.75rem;
-    align-items: flex-end; /* Mobile bottom-sheet / full experience */
+    align-items: flex-end; /* Mobile bottom-sheet for large forms */
   }
   .modal-card {
     max-width: 100%;
-    max-height: 92vh;
-    max-height: 92dvh;
+    max-height: 90vh;
+    max-height: 90dvh;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
+  }
+  /* Keep small dialogs/confirmations cleanly centered and appropriately sized */
+  .modal-overlay:has(.modal-card.modal-sm),
+  .modal-card.modal-sm {
+    align-self: center;
+    margin: auto;
+    border-radius: 16px !important;
+    max-width: calc(100vw - 2rem) !important;
   }
 }
 
@@ -1140,10 +1150,18 @@ html, body {
   }
   .modal-card {
     max-width: 100%;
-    max-height: 95vh;
-    max-height: 95dvh;
+    max-height: 92vh;
+    max-height: 92dvh;
     border-radius: 20px 20px 0 0;
     border-bottom: none;
+  }
+  /* Small Confirmation/Logout Dialog: floating card, not full bottom-sheet */
+  .modal-card.modal-sm {
+    margin: auto auto 1rem auto;
+    width: calc(100% - 1.5rem);
+    border-radius: 18px !important;
+    max-height: 85vh;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.9);
   }
   .modal-header {
     padding: 1rem 1.25rem;
