@@ -449,6 +449,21 @@ html, body {
 }
 
 @media (max-width: 575.98px) {
+  .top-navbar {
+    padding: 0 0.65rem;
+    gap: 0.35rem;
+  }
+
+  .brand-title {
+    font-size: 1rem;
+  }
+
+  .brand-icon-box {
+    width: 28px;
+    height: 28px;
+    font-size: 1rem;
+  }
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
@@ -1073,16 +1088,17 @@ html, body {
 /* Unified Enterprise Modals */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(7, 12, 36, 0.65);
-  backdrop-filter: blur(6px);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  background: rgba(7, 12, 36, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1080;
+  z-index: 99999;
   padding: 1rem;
 }
 
@@ -1155,44 +1171,43 @@ html, body {
 @media (max-width: 767.98px) {
   .modal-overlay {
     padding: 0.75rem;
-    align-items: flex-end; /* Mobile bottom-sheet for large forms */
+    align-items: center;
+    justify-content: center;
   }
   .modal-card {
     max-width: 100%;
     max-height: 90vh;
     max-height: 90dvh;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    border-radius: 16px;
   }
   /* Keep small dialogs/confirmations cleanly centered and appropriately sized */
-  .modal-overlay:has(.modal-card.modal-sm),
   .modal-card.modal-sm {
     align-self: center;
     margin: auto;
     border-radius: 16px !important;
-    max-width: calc(100vw - 2rem) !important;
+    max-width: min(440px, calc(100vw - 2rem)) !important;
   }
 }
 
 @media (max-width: 575.98px) {
   .modal-overlay {
-    padding: 0;
-    align-items: flex-end;
+    padding: 0.75rem;
+    align-items: center;
+    justify-content: center;
   }
   .modal-card {
     max-width: 100%;
     max-height: 92vh;
     max-height: 92dvh;
-    border-radius: 20px 20px 0 0;
-    border-bottom: none;
+    border-radius: 18px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.9);
   }
-  /* Small Confirmation/Logout Dialog: floating card, not full bottom-sheet */
+  /* Small Confirmation/Logout Dialog: cleanly centered floating modal */
   .modal-card.modal-sm {
-    margin: auto auto 1rem auto;
-    width: calc(100% - 1.5rem);
+    margin: auto;
+    width: min(400px, calc(100% - 1.5rem));
     border-radius: 18px !important;
     max-height: 85vh;
-    border-bottom: 1px solid rgba(226, 232, 240, 0.9);
   }
   .modal-header {
     padding: 1rem 1.25rem;
@@ -1202,11 +1217,11 @@ html, body {
   }
   .modal-footer {
     padding: 0.85rem 1.25rem;
-    flex-direction: column-reverse;
+    flex-direction: row;
     gap: 0.5rem;
   }
   .modal-footer .btn {
-    width: 100%;
+    flex: 1 1 50%;
     justify-content: center;
   }
 }

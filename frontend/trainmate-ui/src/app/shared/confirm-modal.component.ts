@@ -20,13 +20,13 @@ import { CommonModule } from '@angular/common';
           <h5 class="modal-title fw-bold text-dark mb-1.5" style="font-size: 1.15rem;">{{ title }}</h5>
           <p class="text-muted small mb-3.5 lh-sm" style="font-size: 0.85rem;">{{ message }}</p>
 
-          <div class="d-flex flex-column flex-sm-row justify-content-center gap-2">
-            <button type="button" class="btn btn-secondary-custom px-3 py-2 order-2 order-sm-1 flex-grow-1" (click)="cancel.emit()">
+          <div class="d-flex gap-2 w-100 mt-2">
+            <button type="button" class="btn btn-light border px-3 py-2.5 flex-grow-1 fw-semibold text-secondary" (click)="cancel.emit()">
               {{ cancelText }}
             </button>
             <button
               type="button"
-              class="btn px-3 py-2 fw-semibold order-1 order-sm-2 flex-grow-1"
+              class="btn px-3 py-2.5 fw-semibold flex-grow-1"
               [ngClass]="isDanger ? 'btn-danger' : 'btn-primary-custom'"
               (click)="confirm.emit()"
             >

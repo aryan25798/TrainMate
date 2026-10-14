@@ -197,17 +197,17 @@ import { NotificationService } from './services/notification.service';
       </div>
 
       <!-- Logout Confirmation Modal -->
-      <div class="modal-overlay logout-modal-overlay" *ngIf="showLogoutConfirm" (click)="showLogoutConfirm = false" role="dialog" aria-modal="true" aria-labelledby="logout-modal-title">
-        <div class="modal-card modal-sm logout-modal-card" (click)="$event.stopPropagation()">
-          <div class="modal-body p-3 p-sm-4 text-center">
-            <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger mb-3" style="width: 48px; height: 48px; font-size: 20px;" aria-hidden="true">
+      <div class="modal-overlay" *ngIf="showLogoutConfirm" (click)="showLogoutConfirm = false" role="dialog" aria-modal="true" aria-labelledby="logout-modal-title">
+        <div class="modal-card modal-sm" (click)="$event.stopPropagation()">
+          <div class="modal-body p-4 text-center">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger mb-3" style="width: 50px; height: 50px; font-size: 22px;" aria-hidden="true">
               <i class="bi bi-box-arrow-right"></i>
             </div>
-            <h5 id="logout-modal-title" class="modal-title fw-bold text-dark mb-1.5" style="font-size: 1.15rem;">Sign Out?</h5>
-            <p class="text-muted small mb-3.5 lh-sm" style="font-size: 0.85rem;">Are you sure you want to end your current session?</p>
-            <div class="d-flex flex-column flex-sm-row justify-content-center gap-2">
-              <button type="button" class="btn btn-secondary-custom px-3 py-2 order-2 order-sm-1 flex-grow-1" (click)="showLogoutConfirm = false">Cancel</button>
-              <button type="button" class="btn btn-danger px-3 py-2 order-1 order-sm-2 flex-grow-1 fw-semibold" (click)="executeLogout()">Sign Out</button>
+            <h5 id="logout-modal-title" class="modal-title fw-bold text-dark mb-1" style="font-size: 1.2rem;">Sign Out?</h5>
+            <p class="text-muted small mb-4">Are you sure you want to end your current session?</p>
+            <div class="d-flex gap-2 w-100">
+              <button type="button" class="btn btn-light border px-3 py-2.5 flex-grow-1 fw-semibold text-secondary" (click)="showLogoutConfirm = false">Cancel</button>
+              <button type="button" class="btn btn-danger px-3 py-2.5 flex-grow-1 fw-semibold" (click)="executeLogout()">Sign Out</button>
             </div>
           </div>
         </div>
