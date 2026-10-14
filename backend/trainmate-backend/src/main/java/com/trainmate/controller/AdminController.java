@@ -89,6 +89,12 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("Trainer deleted successfully and unassigned from cohorts", null));
     }
 
+    @PostMapping("/trainers/bulk-delete")
+    public ResponseEntity<ApiResponse<Integer>> bulkDeleteTrainers(@Valid @RequestBody com.trainmate.dto.BulkDeleteRequest request) {
+        int count = adminService.bulkDeleteTrainers(request.getIds());
+        return ResponseEntity.ok(ApiResponse.success("Successfully deleted " + count + " trainer(s).", count));
+    }
+
     @PutMapping("/cohorts/{cohortId}/trainer")
     public ResponseEntity<ApiResponse<CohortResponse>> reassignTrainer(
             @PathVariable Long cohortId,

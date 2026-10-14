@@ -31,7 +31,14 @@ import { getInitials } from '../../shared/utils/helpers';
           <h1 class="page-title">All System Cohorts</h1>
           <p class="page-subtitle">Master list of cohorts, allocation scores, and trainer assignments across all academy streams.</p>
         </div>
-        <div>
+        <div class="d-flex align-items-center gap-2">
+          <button
+            type="button"
+            class="btn btn-danger btn-sm"
+            *ngIf="selectedCohortIds.size > 0"
+            (click)="showBulkDeleteConfirm = true">
+            <i class="bi bi-trash-fill me-1"></i>Delete Selected ({{ selectedCohortIds.size }})
+          </button>
           <button type="button" class="btn btn-secondary-custom" (click)="exportReport()">
             <i class="bi bi-file-earmark-excel-fill text-success"></i>
             Export Allocation Report
@@ -94,6 +101,16 @@ import { getInitials } from '../../shared/utils/helpers';
           <table class="table table-hover align-middle">
             <thead>
               <tr>
+                <th style="width: 40px;" class="text-center">
+                  <input
+                    type="checkbox"
+                    class="form-check-input"
+                    [checked]="isAllSelected()"
+                    [indeterminate]="isPartiallySelected()"
+                    (change)="toggleSelectAll()"
+                    aria-label="Select all cohorts"
+                  />
+                </th>
                 <th class="text-nowrap">Cohort Code</th>
                 <th>Service Line</th>
                 <th>Required Skill</th>
@@ -106,7 +123,16 @@ import { getInitials } from '../../shared/utils/helpers';
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let c of filteredCohorts">
+              <tr *ngFor="let c of filteredCohorts" [class.table-active]="selectedCohortIds.has(c.id)">
+                <td class="text-center" data-label="Select">
+                  <input
+                    type="checkbox"
+                    class="form-check-input"
+                    [checked]="selectedCohortIds.has(c.id)"
+                    (change)="toggleSelectCohort(c.id)"
+                    [attr.aria-label]="'Select ' + c.cohortCode"
+                  />
+                </td>
                 <td class="fw-bold text-dark text-nowrap" data-label="Cohort Code">{{ c.cohortCode }}</td>
                 <td class="text-nowrap" data-label="Service Line">{{ c.serviceLine }}</td>
                 <td data-label="Required Skill"><span class="badge-tag">{{ c.requiredSkill }}</span></td>
@@ -263,12 +289,25 @@ import { getInitials } from '../../shared/utils/helpers';
       (cancel)="cohortToDelete = null"
       (confirm)="confirmDeleteCohort()">
     </app-confirm-modal>
+
+    <!-- Confirm Bulk Delete Modal -->
+    <app-confirm-modal
+      *ngIf="showBulkDeleteConfirm"
+      title="Delete Multiple Cohorts"
+      [message]="'Are you sure you want to delete ' + selectedCohortIds.size + ' selected cohort(s)? Any assigned trainers will have their workloads released back to the resource pool.'"
+      confirmText="Yes, Delete Selected"
+      [isDanger]="true"
+      (cancel)="showBulkDeleteConfirm = false"
+      (confirm)="confirmBulkDelete()">
+    </app-confirm-modal>
   `
 })
 export class AdminCohortsComponent implements OnInit {
   cohorts: Cohort[] = [];
   displayedCohorts: Cohort[] = [];
   pagedData: PagedResponse<Cohort> | null = null;
+  selectedCohortIds: Set<number> = new Set<number>();
+  showBulkDeleteConfirm: boolean = false;
   searchQuery: string = '';
   statusFilter: string = '';
   serviceLineFilter: string = '';
@@ -302,8 +341,56 @@ export class AdminCohortsComponent implements OnInit {
           this.pagedData = res.data;
           this.cohorts = res.data.content;
           this.displayedCohorts = res.data.content;
+          this.selectedCohortIds.clear();
           this.extractServiceLines();
         }
+      }
+    });
+  }
+
+  toggleSelectCohort(id: number): void {
+    if (this.selectedCohortIds.has(id)) {
+      this.selectedCohortIds.delete(id);
+    } else {
+      this.selectedCohortIds.add(id);
+    }
+  }
+
+  toggleSelectAll(): void {
+    const cohorts = this.filteredCohorts;
+    if (this.isAllSelected()) {
+      this.selectedCohortIds.clear();
+    } else {
+      cohorts.forEach(c => this.selectedCohortIds.add(c.id));
+    }
+  }
+
+  isAllSelected(): boolean {
+    const cohorts = this.filteredCohorts;
+    return cohorts.length > 0 && cohorts.every(c => this.selectedCohortIds.has(c.id));
+  }
+
+  isPartiallySelected(): boolean {
+    const cohorts = this.filteredCohorts;
+    const selectedCount = cohorts.filter(c => this.selectedCohortIds.has(c.id)).length;
+    return selectedCount > 0 && selectedCount < cohorts.length;
+  }
+
+  confirmBulkDelete(): void {
+    const ids = Array.from(this.selectedCohortIds);
+    this.showBulkDeleteConfirm = false;
+    if (ids.length === 0) return;
+
+    this.adminService.bulkDeleteCohorts(ids).subscribe({
+      next: res => {
+        if (res.success) {
+          this.toastService.success(`Successfully deleted ${res.data} cohort(s) and released trainer workloads.`);
+          this.selectedCohortIds.clear();
+          this.loadCohorts();
+        }
+      },
+      error: () => {
+        this.toastService.error(`Failed to delete selected cohorts.`);
       }
     });
   }

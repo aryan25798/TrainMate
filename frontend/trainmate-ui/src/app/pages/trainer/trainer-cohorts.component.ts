@@ -41,7 +41,12 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
               <option value="COMPLETED">Completed</option>
             </select>
           </div>
-          <div class="col-md-3 text-md-end text-muted small">
+          <div class="col-md-3 text-md-end text-muted small" *ngIf="pagedData">
+            Showing {{ (pagedData.number || 0) * (pagedData.size || 15) + 1 }} to 
+            {{ Math.min((pagedData.number || 0) * (pagedData.size || 15) + (pagedData.numberOfElements || 0), pagedData.totalElements || 0) }} 
+            of {{ pagedData.totalElements || 0 }}
+          </div>
+          <div class="col-md-3 text-md-end text-muted small" *ngIf="!pagedData">
             Showing {{ filteredCohorts.length }} of {{ cohorts.length }} cohort(s)
           </div>
         </div>
@@ -101,6 +106,46 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
           </table>
         </div>
       </div>
+
+      <!-- Pagination Controls -->
+      <div class="content-card p-3 mt-3" *ngIf="pagedData && pagedData.totalPages > 1">
+        <nav aria-label="Trainer cohorts pagination">
+          <ul class="pagination pagination-sm justify-content-center mb-0">
+            <li class="page-item" [class.disabled]="pagedData.first">
+              <button class="page-link" (click)="onPageChange(0)" [disabled]="pagedData.first" aria-label="First">
+                <i class="bi bi-chevron-double-left" aria-hidden="true"></i>
+              </button>
+            </li>
+            <li class="page-item" [class.disabled]="pagedData.first">
+              <button class="page-link" (click)="onPageChange(pagedData.number - 1)" [disabled]="pagedData.first" aria-label="Previous">
+                <i class="bi bi-chevron-left" aria-hidden="true"></i>
+              </button>
+            </li>
+            <li class="page-item" *ngFor="let page of getPageNumbers()" [class.active]="page === pagedData.number">
+              <button class="page-link" (click)="onPageChange(page)">{{ page + 1 }}</button>
+            </li>
+            <li class="page-item" [class.disabled]="pagedData.last">
+              <button class="page-link" (click)="onPageChange(pagedData.number + 1)" [disabled]="pagedData.last" aria-label="Next">
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+              </button>
+            </li>
+            <li class="page-item" [class.disabled]="pagedData.last">
+              <button class="page-link" (click)="onPageChange(pagedData.totalPages - 1)" [disabled]="pagedData.last" aria-label="Last">
+                <i class="bi bi-chevron-double-right" aria-hidden="true"></i>
+              </button>
+            </li>
+          </ul>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <select class="form-select form-select-sm w-auto" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange($event)" style="width: 80px;">
+            <option [ngValue]="10">10</option>
+            <option [ngValue]="15">15</option>
+            <option [ngValue]="25">25</option>
+            <option [ngValue]="50">50</option>
+          </select>
+          <small class="text-muted">Page {{ pagedData.number + 1 }} of {{ pagedData.totalPages }}</small>
+        </div>
+      </div>
     </div>
 
     <!-- Cohort Details Modal -->
@@ -116,6 +161,10 @@ export class TrainerCohortsComponent implements OnInit {
   searchQuery: string = '';
   statusFilter: string = '';
   selectedCohort: Cohort | null = null;
+  pagedData: any = null;
+  currentPage: number = 0;
+  pageSize: number = 15;
+  protected readonly Math = Math;
 
   constructor(
     private trainerService: TrainerService,
@@ -123,19 +172,64 @@ export class TrainerCohortsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.loadCohorts();
+  }
+
+  loadCohorts(): void {
     const user = this.authService.currentUserValue;
     const trainerId = user?.trainerId;
     if (!trainerId) {
       console.warn('No trainerId found in user session');
       return;
     }
-    this.trainerService.getCohorts(trainerId).subscribe({
+    this.trainerService.getCohortsPaged(trainerId, this.currentPage, this.pageSize).subscribe({
       next: res => {
         if (res.success) {
-          this.cohorts = res.data;
+          this.pagedData = res.data;
+          this.cohorts = res.data.content;
         }
+      },
+      error: () => {
+        this.trainerService.getCohorts(trainerId).subscribe({
+          next: fallbackRes => {
+            if (fallbackRes.success) {
+              this.cohorts = fallbackRes.data;
+            }
+          }
+        });
       }
     });
+  }
+
+  onPageChange(page: number): void {
+    this.currentPage = page;
+    this.loadCohorts();
+  }
+
+  onPageSizeChange(size: number): void {
+    this.pageSize = size;
+    this.currentPage = 0;
+    this.loadCohorts();
+  }
+
+  getPageNumbers(): number[] {
+    if (!this.pagedData) return [];
+    const totalPages = this.pagedData.totalPages;
+    const currentPage = this.pagedData.number;
+    const pages: number[] = [];
+    
+    const maxPagesToShow = 5;
+    let start = Math.max(0, currentPage - Math.floor(maxPagesToShow / 2));
+    let end = Math.min(totalPages, start + maxPagesToShow);
+    
+    if (end - start < maxPagesToShow) {
+      start = Math.max(0, end - maxPagesToShow);
+    }
+    
+    for (let i = start; i < end; i++) {
+      pages.push(i);
+    }
+    return pages;
   }
 
   get filteredCohorts(): Cohort[] {

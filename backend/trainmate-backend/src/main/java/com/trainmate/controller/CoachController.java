@@ -33,6 +33,15 @@ public class CoachController {
         return ResponseEntity.ok(ApiResponse.success("Cohorts retrieved successfully", cohorts));
     }
 
+    @GetMapping("/{coachId}/cohorts/paged")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<CohortResponse>>> getCohortsPaged(
+            @PathVariable Long coachId,
+            @org.springframework.data.web.PageableDefault(size = 15, sort = "createdDate") org.springframework.data.domain.Pageable pageable
+    ) {
+        org.springframework.data.domain.Page<CohortResponse> cohorts = coachService.getCohortsPaged(coachId, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Cohorts retrieved successfully", cohorts));
+    }
+
     @PostMapping("/{coachId}/cohorts")
     public ResponseEntity<ApiResponse<CohortResponse>> createCohort(
             @PathVariable Long coachId,

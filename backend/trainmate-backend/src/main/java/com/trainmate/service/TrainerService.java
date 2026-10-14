@@ -68,4 +68,13 @@ public class TrainerService {
         List<Cohort> cohorts = cohortRepository.findByAssignedTrainerIdOrderByStartDateAsc(trainerId);
         return cohorts.stream().map(cohortService::mapToResponse).collect(Collectors.toList());
     }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<CohortResponse> getCohortsPaged(Long trainerId, org.springframework.data.domain.Pageable pageable) {
+        if (!trainerRepository.existsById(trainerId)) {
+            throw new ResourceNotFoundException("Trainer not found with ID: " + trainerId);
+        }
+        return cohortRepository.findByAssignedTrainerIdOrderByStartDateAsc(trainerId, pageable)
+                .map(cohortService::mapToResponse);
+    }
 }

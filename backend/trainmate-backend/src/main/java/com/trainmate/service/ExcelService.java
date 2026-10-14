@@ -207,12 +207,17 @@ public class ExcelService {
 
         int successfulRows = 0;
         List<com.trainmate.dto.CohortResponse> allocatedCohorts = new ArrayList<>();
-        // Save and allocate each valid cohort
+        // Save and allocate each valid cohort in an isolated boundary so large batches never crash midway
         for (Cohort cohort : validCohorts) {
-            Cohort saved = cohortRepository.save(cohort);
-            trainerAllocationService.allocateTrainer(saved);
-            allocatedCohorts.add(cohortService.mapToResponse(saved));
-            successfulRows++;
+            try {
+                Cohort saved = cohortRepository.save(cohort);
+                trainerAllocationService.allocateTrainer(saved);
+                Cohort refreshed = cohortRepository.findById(saved.getId()).orElse(saved);
+                allocatedCohorts.add(cohortService.mapToResponse(refreshed));
+                successfulRows++;
+            } catch (Exception ex) {
+                errors.add(new ExcelValidationError(0, "Cohort " + cohort.getCohortCode() + ": Allocation skipped (" + ex.getMessage() + ")"));
+            }
         }
 
         int failedRows = totalRows - successfulRows;

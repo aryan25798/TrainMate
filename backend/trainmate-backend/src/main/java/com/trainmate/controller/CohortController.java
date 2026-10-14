@@ -37,6 +37,12 @@ public class CohortController {
         return ResponseEntity.ok(ApiResponse.success("Cohort deleted successfully and trainer workload released.", null));
     }
 
+    @PostMapping("/bulk-delete")
+    public ResponseEntity<ApiResponse<Integer>> bulkDeleteCohorts(@Valid @RequestBody com.trainmate.dto.BulkDeleteRequest request) {
+        int count = cohortService.bulkDeleteCohorts(request.getIds());
+        return ResponseEntity.ok(ApiResponse.success("Successfully deleted " + count + " cohort(s).", count));
+    }
+
     @PutMapping("/{cohortId}")
     public ResponseEntity<ApiResponse<CohortResponse>> updateCohort(
             @PathVariable Long cohortId,

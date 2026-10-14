@@ -60,6 +60,12 @@ public class CoachService {
         return cohorts.stream().map(cohortService::mapToResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<CohortResponse> getCohortsPaged(Long coachUserId, org.springframework.data.domain.Pageable pageable) {
+        return cohortRepository.findByCoachUserIdOrderByCreatedDateDesc(coachUserId, pageable)
+                .map(cohortService::mapToResponse);
+    }
+
     public CohortUploadResponse uploadCohorts(Long coachUserId, MultipartFile file) {
         User coachUser = userRepository.findById(coachUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Coach user not found with ID: " + coachUserId));

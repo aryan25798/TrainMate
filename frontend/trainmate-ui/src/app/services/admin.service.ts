@@ -64,6 +64,14 @@ export class AdminService {
     return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/trainers/${trainerId}`);
   }
 
+  bulkDeleteTrainers(ids: number[]): Observable<ApiResponse<number>> {
+    return this.http.post<ApiResponse<number>>(`${this.apiUrl}/trainers/bulk-delete`, { ids });
+  }
+
+  bulkDeleteCohorts(ids: number[]): Observable<ApiResponse<number>> {
+    return this.http.post<ApiResponse<number>>(`${environment.apiUrl}/cohorts/bulk-delete`, { ids });
+  }
+
   reassignTrainer(cohortId: number, request: TrainerOverrideRequest, adminUserId: number): Observable<ApiResponse<Cohort>> {
     return this.http.put<ApiResponse<Cohort>>(`${this.apiUrl}/cohorts/${cohortId}/trainer?adminUserId=${adminUserId}`, request);
   }

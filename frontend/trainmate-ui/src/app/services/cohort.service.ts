@@ -20,6 +20,10 @@ export class CohortService {
     return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${cohortId}`);
   }
 
+  bulkDeleteCohorts(ids: number[]): Observable<ApiResponse<number>> {
+    return this.http.post<ApiResponse<number>>(`${this.apiUrl}/bulk-delete`, { ids });
+  }
+
   updateCohort(cohortId: number, data: CreateCohortRequest): Observable<ApiResponse<Cohort>> {
     return this.http.put<ApiResponse<Cohort>>(`${this.apiUrl}/${cohortId}`, data);
   }

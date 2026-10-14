@@ -32,7 +32,14 @@ import { getInitials } from '../../shared/utils/helpers';
           <h1 class="page-title">My Managed Cohorts</h1>
           <p class="page-subtitle">View, edit, reallocate, and monitor cohorts assigned to your coaching portfolio.</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <button
+            type="button"
+            class="btn btn-danger btn-sm"
+            *ngIf="selectedCohortIds.size > 0"
+            (click)="showBulkDeleteConfirm = true">
+            <i class="bi bi-trash-fill me-1"></i>Delete Selected ({{ selectedCohortIds.size }})
+          </button>
           <button type="button" class="btn btn-primary-custom" (click)="showCreateModal = true">
             <i class="bi bi-plus-circle-fill"></i>
             Create Cohort
@@ -73,8 +80,10 @@ import { getInitials } from '../../shared/utils/helpers';
               (click)="searchQuery = ''; statusFilter = ''">
               <i class="bi bi-x-circle me-1"></i>Reset Filters
             </button>
-            <span class="text-muted small">
-              Showing {{ filteredCohorts.length }} of {{ cohorts.length }} cohort(s)
+            <span class="text-muted small" *ngIf="pagedData">
+              Showing {{ (pagedData.number || 0) * (pagedData.size || 15) + 1 }} to 
+              {{ Math.min((pagedData.number || 0) * (pagedData.size || 15) + (pagedData.numberOfElements || 0), pagedData.totalElements || 0) }} 
+              of {{ pagedData.totalElements || 0 }}
             </span>
           </div>
         </div>
@@ -86,6 +95,16 @@ import { getInitials } from '../../shared/utils/helpers';
           <table class="table table-hover align-middle">
             <thead>
               <tr>
+                <th style="width: 40px;" class="text-center">
+                  <input
+                    type="checkbox"
+                    class="form-check-input"
+                    [checked]="isAllSelected()"
+                    [indeterminate]="isPartiallySelected()"
+                    (change)="toggleSelectAll()"
+                    aria-label="Select all cohorts"
+                  />
+                </th>
                 <th class="text-nowrap">Cohort Code</th>
                 <th>Service Line</th>
                 <th>Required Skill</th>
@@ -98,7 +117,16 @@ import { getInitials } from '../../shared/utils/helpers';
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let c of filteredCohorts">
+              <tr *ngFor="let c of filteredCohorts" [class.table-active]="selectedCohortIds.has(c.id)">
+                <td class="text-center" data-label="Select">
+                  <input
+                    type="checkbox"
+                    class="form-check-input"
+                    [checked]="selectedCohortIds.has(c.id)"
+                    (change)="toggleSelectCohort(c.id)"
+                    [attr.aria-label]="'Select ' + c.cohortCode"
+                  />
+                </td>
                 <td class="fw-bold text-dark text-nowrap" data-label="Cohort Code">{{ c.cohortCode }}</td>
                 <td class="text-nowrap" data-label="Service Line">{{ c.serviceLine }}</td>
                 <td data-label="Required Skill"><span class="badge-tag">{{ c.requiredSkill }}</span></td>
@@ -182,6 +210,46 @@ import { getInitials } from '../../shared/utils/helpers';
           </table>
         </div>
       </div>
+
+      <!-- Pagination Controls -->
+      <div class="content-card p-3 mt-3" *ngIf="pagedData && pagedData.totalPages > 1">
+        <nav aria-label="Cohort pagination">
+          <ul class="pagination pagination-sm justify-content-center mb-0">
+            <li class="page-item" [class.disabled]="pagedData.first">
+              <button class="page-link" (click)="onPageChange(0)" [disabled]="pagedData.first" aria-label="First">
+                <i class="bi bi-chevron-double-left" aria-hidden="true"></i>
+              </button>
+            </li>
+            <li class="page-item" [class.disabled]="pagedData.first">
+              <button class="page-link" (click)="onPageChange(pagedData.number - 1)" [disabled]="pagedData.first" aria-label="Previous">
+                <i class="bi bi-chevron-left" aria-hidden="true"></i>
+              </button>
+            </li>
+            <li class="page-item" *ngFor="let page of getPageNumbers()" [class.active]="page === pagedData.number">
+              <button class="page-link" (click)="onPageChange(page)">{{ page + 1 }}</button>
+            </li>
+            <li class="page-item" [class.disabled]="pagedData.last">
+              <button class="page-link" (click)="onPageChange(pagedData.number + 1)" [disabled]="pagedData.last" aria-label="Next">
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+              </button>
+            </li>
+            <li class="page-item" [class.disabled]="pagedData.last">
+              <button class="page-link" (click)="onPageChange(pagedData.totalPages - 1)" [disabled]="pagedData.last" aria-label="Last">
+                <i class="bi bi-chevron-double-right" aria-hidden="true"></i>
+              </button>
+            </li>
+          </ul>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <select class="form-select form-select-sm w-auto" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange($event)" style="width: 80px;">
+            <option [ngValue]="10">10</option>
+            <option [ngValue]="15">15</option>
+            <option [ngValue]="25">25</option>
+            <option [ngValue]="50">50</option>
+          </select>
+          <small class="text-muted">Page {{ pagedData.number + 1 }} of {{ pagedData.totalPages }}</small>
+        </div>
+      </div>
     </div>
 
     <!-- Cohort Details Modal with 100-Point Score Breakdown -->
@@ -216,6 +284,17 @@ import { getInitials } from '../../shared/utils/helpers';
       (cancel)="cohortToDelete = null"
       (confirm)="confirmDeleteCohort()">
     </app-confirm-modal>
+
+    <!-- Confirm Bulk Delete Modal -->
+    <app-confirm-modal
+      *ngIf="showBulkDeleteConfirm"
+      title="Delete Selected Cohorts"
+      [message]="'Are you sure you want to permanently delete the ' + selectedCohortIds.size + ' selected cohorts? Any assigned trainer workload capacity will be automatically released back to the pool.'"
+      confirmText="Yes, Delete All Selected"
+      [isDanger]="true"
+      (cancel)="showBulkDeleteConfirm = false"
+      (confirm)="confirmBulkDelete()">
+    </app-confirm-modal>
   `
 })
 export class CoachCohortsComponent implements OnInit {
@@ -226,7 +305,13 @@ export class CoachCohortsComponent implements OnInit {
   editingCohort: Cohort | null = null;
   cohortToDelete: Cohort | null = null;
   showCreateModal: boolean = false;
+  showBulkDeleteConfirm: boolean = false;
+  selectedCohortIds: Set<number> = new Set<number>();
   reallocatingId: number | null = null;
+  pagedData: any = null;
+  currentPage: number = 0;
+  pageSize: number = 15;
+  protected readonly Math = Math;
 
   constructor(
     private coachService: CoachService,
@@ -243,13 +328,25 @@ export class CoachCohortsComponent implements OnInit {
     const user = this.authService.currentUserValue;
     const coachId = user?.coachId ?? user?.userId;
     if (!coachId) return;
-    this.coachService.getCohorts(coachId).subscribe({
+    this.coachService.getCohortsPaged(coachId, this.currentPage, this.pageSize).subscribe({
       next: res => {
         if (res.success) {
-          this.cohorts = res.data;
+          this.pagedData = res.data;
+          this.cohorts = res.data.content;
+          this.selectedCohortIds.clear();
         }
       },
-      error: err => console.error('Failed to load cohorts:', err)
+      error: () => {
+        // Fallback to unpaged if necessary
+        this.coachService.getCohorts(coachId).subscribe({
+          next: fallbackRes => {
+            if (fallbackRes.success) {
+              this.cohorts = fallbackRes.data;
+              this.selectedCohortIds.clear();
+            }
+          }
+        });
+      }
     });
   }
 
@@ -315,6 +412,84 @@ export class CoachCohortsComponent implements OnInit {
         this.toastService.error(`Failed to delete cohort.`);
       }
     });
+  }
+
+  toggleSelectCohort(id: number): void {
+    if (this.selectedCohortIds.has(id)) {
+      this.selectedCohortIds.delete(id);
+    } else {
+      this.selectedCohortIds.add(id);
+    }
+  }
+
+  toggleSelectAll(): void {
+    const cohorts = this.filteredCohorts;
+    if (this.isAllSelected()) {
+      this.selectedCohortIds.clear();
+    } else {
+      cohorts.forEach(c => this.selectedCohortIds.add(c.id));
+    }
+  }
+
+  isAllSelected(): boolean {
+    const cohorts = this.filteredCohorts;
+    return cohorts.length > 0 && cohorts.every(c => this.selectedCohortIds.has(c.id));
+  }
+
+  isPartiallySelected(): boolean {
+    const cohorts = this.filteredCohorts;
+    const selectedCount = cohorts.filter(c => this.selectedCohortIds.has(c.id)).length;
+    return selectedCount > 0 && selectedCount < cohorts.length;
+  }
+
+  confirmBulkDelete(): void {
+    const ids = Array.from(this.selectedCohortIds);
+    this.showBulkDeleteConfirm = false;
+    if (ids.length === 0) return;
+
+    this.cohortService.bulkDeleteCohorts(ids).subscribe({
+      next: res => {
+        if (res.success) {
+          this.toastService.success(`Successfully deleted ${res.data} cohort(s) and released trainer workloads.`);
+          this.selectedCohortIds.clear();
+          this.loadCohorts();
+        }
+      },
+      error: () => {
+        this.toastService.error(`Failed to delete selected cohorts.`);
+      }
+    });
+  }
+
+  onPageChange(page: number): void {
+    this.currentPage = page;
+    this.loadCohorts();
+  }
+
+  onPageSizeChange(size: number): void {
+    this.pageSize = size;
+    this.currentPage = 0;
+    this.loadCohorts();
+  }
+
+  getPageNumbers(): number[] {
+    if (!this.pagedData) return [];
+    const totalPages = this.pagedData.totalPages;
+    const currentPage = this.pagedData.number;
+    const pages: number[] = [];
+    
+    const maxPagesToShow = 5;
+    let start = Math.max(0, currentPage - Math.floor(maxPagesToShow / 2));
+    let end = Math.min(totalPages, start + maxPagesToShow);
+    
+    if (end - start < maxPagesToShow) {
+      start = Math.max(0, end - maxPagesToShow);
+    }
+    
+    for (let i = start; i < end; i++) {
+      pages.push(i);
+    }
+    return pages;
   }
 
   get filteredCohorts(): Cohort[] {

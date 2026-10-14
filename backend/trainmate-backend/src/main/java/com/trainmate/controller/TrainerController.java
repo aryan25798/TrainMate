@@ -30,4 +30,13 @@ public class TrainerController {
         List<CohortResponse> cohorts = trainerService.getCohorts(trainerId);
         return ResponseEntity.ok(ApiResponse.success("Assigned cohorts retrieved successfully", cohorts));
     }
+
+    @GetMapping("/{trainerId}/cohorts/paged")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<CohortResponse>>> getCohortsPaged(
+            @PathVariable Long trainerId,
+            @org.springframework.data.web.PageableDefault(size = 15, sort = "startDate") org.springframework.data.domain.Pageable pageable
+    ) {
+        org.springframework.data.domain.Page<CohortResponse> cohorts = trainerService.getCohortsPaged(trainerId, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Assigned cohorts retrieved successfully", cohorts));
+    }
 }

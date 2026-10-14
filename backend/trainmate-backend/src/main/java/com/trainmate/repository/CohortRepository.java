@@ -21,7 +21,9 @@ public interface CohortRepository extends JpaRepository<Cohort, Long> {
     boolean existsByCohortCode(String cohortCode);
 
     List<Cohort> findByCoachUserIdOrderByCreatedDateDesc(Long coachUserId);
+    Page<Cohort> findByCoachUserIdOrderByCreatedDateDesc(Long coachUserId, Pageable pageable);
     List<Cohort> findByAssignedTrainerIdOrderByStartDateAsc(Long trainerId);
+    Page<Cohort> findByAssignedTrainerIdOrderByStartDateAsc(Long trainerId, Pageable pageable);
     List<Cohort> findAllByOrderByCreatedDateDesc();
     Page<Cohort> findAllByOrderByCreatedDateDesc(Pageable pageable);
 

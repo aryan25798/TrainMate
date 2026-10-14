@@ -218,6 +218,19 @@ public class AdminService {
     }
 
     @Transactional
+    public int bulkDeleteTrainers(List<Long> trainerIds) {
+        if (trainerIds == null || trainerIds.isEmpty()) return 0;
+        int count = 0;
+        for (Long id : trainerIds) {
+            try {
+                deleteTrainer(id);
+                count++;
+            } catch (ResourceNotFoundException ignored) {}
+        }
+        return count;
+    }
+
+    @Transactional
     public CohortResponse overrideTrainer(Long cohortId, Long newTrainerId, String reason) {
         Cohort cohort = cohortRepository.findById(cohortId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cohort not found with ID: " + cohortId));

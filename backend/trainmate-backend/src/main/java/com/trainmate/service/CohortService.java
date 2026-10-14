@@ -15,6 +15,8 @@ import com.trainmate.repository.TrainerRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class CohortService {
 
@@ -67,6 +69,24 @@ public class CohortService {
 
         // Delete the cohort
         cohortRepository.delete(cohort);
+    }
+
+    /**
+     * Bulk deletes multiple cohorts and safely decrements workload for assigned trainers.
+     */
+    @Transactional
+    public int bulkDeleteCohorts(List<Long> cohortIds) {
+        if (cohortIds == null || cohortIds.isEmpty()) return 0;
+        int count = 0;
+        for (Long id : cohortIds) {
+            try {
+                deleteCohort(id);
+                count++;
+            } catch (ResourceNotFoundException ignored) {
+                // Already deleted
+            }
+        }
+        return count;
     }
 
     /**
