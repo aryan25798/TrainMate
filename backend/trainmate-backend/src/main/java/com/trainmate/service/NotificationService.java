@@ -117,6 +117,20 @@ public class NotificationService {
         )).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<NotificationResponse> getNotificationsPaged(Long userId, org.springframework.data.domain.Pageable pageable) {
+        return notificationRepository.findByReceiverUserIdOrderByCreatedDateDesc(userId, pageable)
+                .map(n -> new NotificationResponse(
+                        n.getId(),
+                        n.getReceiverUser().getId(),
+                        n.getReceiverUser().getRole().name(),
+                        n.getNotificationType(),
+                        n.getMessage(),
+                        n.getIsRead(),
+                        n.getCreatedDate()
+                ));
+    }
+
     @Transactional
     public int markAllAsRead(Long userId) {
         return notificationRepository.markAllAsReadByUserId(userId);

@@ -194,6 +194,14 @@ export class CoachDashboardComponent implements OnInit {
   ngOnInit(): void {
     const user = this.authService.currentUserValue;
     this.userName = user?.name || 'Coach';
+    const coachId = user?.coachId ?? user?.userId;
+    if (coachId) {
+      const cached = this.coachService.peekDashboard(coachId);
+      if (cached && cached.success && cached.data) {
+        this.dashboard = cached.data;
+        this.isLoading = false;
+      }
+    }
     this.loadData();
   }
 
@@ -205,7 +213,9 @@ export class CoachDashboardComponent implements OnInit {
       return;
     }
 
-    this.isLoading = true;
+    if (!this.dashboard) {
+      this.isLoading = true;
+    }
     this.hasError = false;
 
     forkJoin({
@@ -224,7 +234,9 @@ export class CoachDashboardComponent implements OnInit {
       error: (err) => {
         console.error('Failed to load coach dashboard:', err);
         this.isLoading = false;
-        this.hasError = true;
+        if (!this.dashboard) {
+          this.hasError = true;
+        }
       }
     });
   }

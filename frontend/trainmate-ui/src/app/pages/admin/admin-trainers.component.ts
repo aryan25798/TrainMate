@@ -1,9 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { AdminService } from '../../services/admin.service';
 import { ToastService } from '../../services/toast.service';
-import { Trainer } from '../../models/models';
+import { Trainer, PagedResponse } from '../../models/models';
 import { TrainerFormModalComponent } from '../../shared/trainer-form-modal.component';
 import { ConfirmModalComponent } from '../../shared/confirm-modal.component';
 import { ErrorCardComponent } from '../../shared/error-card.component';
@@ -16,7 +18,10 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
     <div>
       <div class="page-header">
         <div>
-          <h1 class="page-title">Trainers Management</h1>
+          <h1 class="page-title d-flex align-items-center gap-2">
+            <span>Trainers Management</span>
+            <span *ngIf="isRefreshing" class="spinner-border spinner-border-sm text-primary" title="Syncing in background..."></span>
+          </h1>
           <p class="page-subtitle">Inspect trainer profiles, skill proficiencies, availability, and active workload capacity.</p>
         </div>
         <div class="d-flex align-items-center gap-2">
@@ -45,6 +50,7 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
                 class="form-control"
                 placeholder="Search by trainer name, skill, or service line..."
                 [(ngModel)]="searchQuery"
+                (ngModelChange)="onSearchInput($event)"
               />
             </div>
           </div>
@@ -53,16 +59,12 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
               <option value="">All Statuses</option>
               <option value="AVAILABLE">Available</option>
               <option value="UNAVAILABLE">Unavailable</option>
-              <option value="AT_CAPACITY">At Capacity</option>
             </select>
           </div>
-          <div class="col-md-3 text-md-end text-muted small" *ngIf="pagedData">
+          <div class="col-md-3 text-md-end text-muted small" *ngIf="pagedData && pagedData.totalElements > 0">
             Showing {{ (pagedData.number || 0) * (pagedData.size || 20) + 1 }} to 
             {{ Math.min((pagedData.number || 0) * (pagedData.size || 20) + (pagedData.numberOfElements || 0), pagedData.totalElements || 0) }} 
             of {{ pagedData.totalElements || 0 }}
-          </div>
-          <div class="col-md-3 text-md-end text-muted small" *ngIf="!pagedData">
-            Showing {{ filteredTrainers.length }} of {{ trainers.length }} trainer(s)
           </div>
         </div>
       </div>
@@ -73,7 +75,7 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
         title="Unable to load trainers"
         message="A network error occurred or the cloud server is waking up. Click below to retry."
         [isRetrying]="isLoading"
-        (retry)="loadTrainers()">
+        (retry)="loadTrainers(true)">
       </app-error-card>
 
       <!-- Trainers Table -->
@@ -104,7 +106,7 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
             </thead>
             <tbody>
               <!-- Skeleton Loading Rows -->
-              <ng-container *ngIf="isLoading">
+              <ng-container *ngIf="isLoading && trainers.length === 0">
                 <tr *ngFor="let i of [1,2,3,4,5,6]">
                   <td class="text-center"><div class="skeleton-shimmer" style="width:16px;height:16px;border-radius:4px;"></div></td>
                   <td>
@@ -126,8 +128,8 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
                 </tr>
               </ng-container>
 
-              <ng-container *ngIf="!isLoading">
-              <tr *ngFor="let t of filteredTrainers" [class.table-active]="selectedTrainerIds.has(t.id)">
+              <ng-container *ngIf="trainers.length > 0">
+              <tr *ngFor="let t of displayedTrainers" [class.table-active]="selectedTrainerIds.has(t.id)">
                 <td class="text-center" data-label="Select">
                   <input
                     type="checkbox"
@@ -178,37 +180,36 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
                 </td>
                 <td class="text-end text-nowrap action-cell" data-label="Actions">
                   <div class="action-btn-group">
-                    <button class="action-btn btn-edit" (click)="openEditTrainer(t)" title="Edit Trainer Details" aria-label="Edit trainer">
-                      <i class="bi bi-pencil"></i>
-                    </button>
                     <button
                       class="action-btn"
-                      [ngClass]="t.status === 'AVAILABLE' ? 'btn-reallocate' : 'btn-view'"
+                      [title]="t.status === 'AVAILABLE' ? 'Mark Unavailable' : 'Mark Available'"
                       (click)="toggleAvailability(t)"
-                      [title]="t.status === 'AVAILABLE' ? 'Deactivate (Set Unavailable)' : 'Activate (Set Available)'"
-                      [attr.aria-label]="t.status === 'AVAILABLE' ? 'Deactivate trainer' : 'Activate trainer'"
-                    >
-                      <i class="bi" [ngClass]="t.status === 'AVAILABLE' ? 'bi-pause-circle' : 'bi-play-circle'"></i>
+                      [attr.aria-label]="t.status === 'AVAILABLE' ? 'Mark Unavailable' : 'Mark Available'">
+                      <i class="bi" [ngClass]="t.status === 'AVAILABLE' ? 'bi-toggle-on text-success' : 'bi-toggle-off text-muted'" aria-hidden="true"></i>
+                    </button>
+                    <button class="action-btn btn-edit" (click)="openEditTrainer(t)" title="Edit Trainer Profile" aria-label="Edit trainer">
+                      <i class="bi bi-pencil" aria-hidden="true"></i>
                     </button>
                     <button class="action-btn btn-delete" (click)="trainerToDelete = t" title="Delete Trainer" aria-label="Delete trainer">
-                      <i class="bi bi-trash"></i>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-              <tr *ngIf="filteredTrainers.length === 0">
-                <td colspan="9" class="text-center py-5">
-                  <div class="d-flex flex-column align-items-center justify-content-center">
-                    <i class="bi bi-people text-muted opacity-50 mb-2" style="font-size: 2.5rem;"></i>
-                    <h6 class="text-dark fw-bold mb-1">No trainers found</h6>
-                    <p class="text-muted small mb-3">No trainers matched your current search filters.</p>
-                    <button class="btn btn-sm btn-outline-primary" *ngIf="searchQuery" (click)="searchQuery = ''">
-                      <i class="bi bi-x-circle me-1"></i> Clear Search
+                      <i class="bi bi-trash" aria-hidden="true"></i>
                     </button>
                   </div>
                 </td>
               </tr>
               </ng-container>
+
+              <tr *ngIf="!isLoading && displayedTrainers.length === 0">
+                <td colspan="9" class="text-center py-5">
+                  <div class="d-flex flex-column align-items-center justify-content-center">
+                    <i class="bi bi-person-x text-muted opacity-50 mb-2" style="font-size: 2.5rem;"></i>
+                    <h6 class="text-dark fw-bold mb-1">No trainers found</h6>
+                    <p class="text-muted small mb-3">No trainers match your search criteria.</p>
+                    <button class="btn btn-sm btn-outline-primary" *ngIf="searchQuery || statusFilter" (click)="resetFilters()">
+                      <i class="bi bi-x-circle me-1"></i> Clear Filters
+                    </button>
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -244,43 +245,47 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
           </ul>
         </nav>
         <div class="d-flex justify-content-between align-items-center mt-2">
-          <select class="form-select form-select-sm w-auto" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange($event)" style="width: 80px;">
-            <option [ngValue]="10">10</option>
-            <option [ngValue]="20">20</option>
-            <option [ngValue]="50">50</option>
-            <option [ngValue]="100">100</option>
-          </select>
-          <small class="text-muted">Page {{ pagedData.number + 1 }} of {{ pagedData.totalPages }}</small>
+          <div class="d-flex align-items-center gap-2">
+            <label class="small text-muted mb-0">Show</label>
+            <select class="form-select form-select-sm w-auto" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange($event)">
+              <option [value]="10">10</option>
+              <option [value]="20">20</option>
+              <option [value]="50">50</option>
+              <option [value]="100">100</option>
+            </select>
+            <label class="small text-muted mb-0">per page</label>
+          </div>
+          <small class="text-muted">Page {{ (pagedData.number || 0) + 1 }} of {{ pagedData.totalPages || 1 }} ({{ pagedData.totalElements || 0 }} total)</small>
         </div>
       </div>
     </div>
 
-    <!-- Add / Edit Trainer Modal -->
+    <!-- Trainer Modal (Add/Edit) -->
     <app-trainer-form-modal
       *ngIf="showTrainerModal"
-      [trainer]="selectedTrainerForEdit"
       [isEdit]="isEditMode"
+      [trainer]="selectedTrainerForEdit"
       (closed)="showTrainerModal = false"
       (saved)="onTrainerSaved($event)">
     </app-trainer-form-modal>
 
-    <!-- Delete Trainer Confirm Modal -->
+    <!-- Delete Single Trainer Modal -->
     <app-confirm-modal
       *ngIf="trainerToDelete"
       title="Delete Trainer"
-      [message]="'Are you sure you want to remove trainer ' + trainerToDelete.name + '? Any cohorts currently assigned to this trainer will be set to UNASSIGNED.'"
+      [message]="'Are you sure you want to delete ' + trainerToDelete.name + '? Any assigned cohorts will become unassigned and require reassignment.'"
       confirmText="Yes, Delete Trainer"
       [isDanger]="true"
       (cancel)="trainerToDelete = null"
       (confirm)="confirmDeleteTrainer()">
     </app-confirm-modal>
 
-    <!-- Confirm Bulk Delete Modal -->
+    <!-- Bulk Delete Modal -->
     <app-confirm-modal
       *ngIf="showBulkDeleteConfirm"
-      title="Delete Selected Trainers"
-      [message]="'Are you sure you want to permanently delete the ' + selectedTrainerIds.size + ' selected trainer(s)? Any cohorts currently assigned to them will have their assignments removed and reset to UNASSIGNED.'"
-      confirmText="Yes, Delete All Selected"
+      title="Delete Multiple Trainers"
+      [message]="'Are you sure you want to delete ' + selectedTrainerIds.size + ' selected trainer(s)? All their cohort assignments will be automatically unassigned.'"
+      confirmText="Yes, Delete Selected"
       [isDanger]="true"
       (cancel)="showBulkDeleteConfirm = false"
       (confirm)="confirmBulkDelete()">
@@ -288,15 +293,18 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
   `,
   styles: [`
     .skeleton-shimmer {
-      background: linear-gradient(90deg, #edf2f7 25%, #e2e8f0 50%, #edf2f7 75%);
+      background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
       background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
+      animation: shimmer 1.5s infinite ease-in-out;
       display: inline-block;
+      vertical-align: middle;
     }
+
     @keyframes shimmer {
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
+
     @media (prefers-reduced-motion: reduce) {
       .skeleton-shimmer {
         animation: none;
@@ -305,11 +313,12 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
     }
   `]
 })
-export class AdminTrainersComponent implements OnInit {
+export class AdminTrainersComponent implements OnInit, OnDestroy {
   trainers: Trainer[] = [];
   searchQuery: string = '';
   statusFilter: string = '';
   isLoading: boolean = true;
+  isRefreshing: boolean = false;
   hasError: boolean = false;
 
   showTrainerModal: boolean = false;
@@ -319,9 +328,14 @@ export class AdminTrainersComponent implements OnInit {
 
   showBulkDeleteConfirm: boolean = false;
   selectedTrainerIds: Set<number> = new Set<number>();
-  pagedData: any = null;
+  pagedData: PagedResponse<Trainer> | null = null;
   currentPage: number = 0;
   pageSize: number = 20;
+  sortBy: string = 'id,asc';
+
+  private searchSubject = new Subject<string>();
+  private searchSub?: Subscription;
+
   protected readonly Math = Math;
 
   constructor(
@@ -330,39 +344,103 @@ export class AdminTrainersComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    // 1. Restore state from adminService.trainersState
+    const state = this.adminService.trainersState;
+    this.currentPage = state.page;
+    this.pageSize = state.size;
+    this.sortBy = state.sort;
+    this.searchQuery = state.search;
+
+    // 2. Setup debounced search subscription
+    this.searchSub = this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged()
+    ).subscribe(term => {
+      this.searchQuery = term;
+      this.currentPage = 0;
+      this.syncState();
+      this.loadTrainers();
+    });
+
+    // 3. Instant cache peek
+    const cached = this.adminService.peekTrainersPaged(
+      this.searchQuery,
+      this.currentPage,
+      this.pageSize,
+      this.sortBy
+    );
+    if (cached && cached.success && cached.data) {
+      this.pagedData = cached.data;
+      this.trainers = cached.data.content;
+      this.isLoading = false;
+      this.isRefreshing = true;
+    }
+
     this.loadTrainers();
   }
 
-  loadTrainers(): void {
-    this.isLoading = true;
+  ngOnDestroy(): void {
+    this.searchSub?.unsubscribe();
+  }
+
+  onSearchInput(val: string): void {
+    this.searchSubject.next(val);
+  }
+
+  resetFilters(): void {
+    this.searchQuery = '';
+    this.statusFilter = '';
+    this.currentPage = 0;
+    this.syncState();
+    this.loadTrainers();
+  }
+
+  private syncState(): void {
+    this.adminService.trainersState = {
+      page: this.currentPage,
+      size: this.pageSize,
+      sort: this.sortBy,
+      search: this.searchQuery
+    };
+  }
+
+  loadTrainers(forceRefresh: boolean = false): void {
+    if (this.trainers.length === 0) {
+      this.isLoading = true;
+    } else {
+      this.isRefreshing = true;
+    }
     this.hasError = false;
-    this.adminService.getAllTrainersPaged(this.currentPage, this.pageSize).subscribe({
+
+    this.adminService.getAllTrainersPaged(
+      this.searchQuery,
+      this.currentPage,
+      this.pageSize,
+      this.sortBy,
+      forceRefresh
+    ).subscribe({
       next: res => {
-        this.isLoading = false;
-        if (res.success) {
+        if (res.success && res.data) {
           this.pagedData = res.data;
           this.trainers = res.data.content;
           this.selectedTrainerIds.clear();
-          this.hasError = false;
         }
+        this.isLoading = false;
+        this.isRefreshing = false;
       },
       error: () => {
-        this.adminService.getAllTrainers().subscribe({
-          next: fallbackRes => {
-            this.isLoading = false;
-            if (fallbackRes.success) {
-              this.trainers = fallbackRes.data;
-              this.selectedTrainerIds.clear();
-              this.hasError = false;
-            }
-          },
-          error: () => {
-            this.isLoading = false;
-            this.hasError = true;
-          }
-        });
+        this.isLoading = false;
+        this.isRefreshing = false;
+        if (this.trainers.length === 0) {
+          this.hasError = true;
+        }
       }
     });
+  }
+
+  get displayedTrainers(): Trainer[] {
+    if (!this.statusFilter) return this.trainers;
+    return this.trainers.filter(t => t.status === this.statusFilter);
   }
 
   toggleSelectTrainer(id: number): void {
@@ -374,23 +452,20 @@ export class AdminTrainersComponent implements OnInit {
   }
 
   toggleSelectAll(): void {
-    const trainers = this.filteredTrainers;
     if (this.isAllSelected()) {
       this.selectedTrainerIds.clear();
     } else {
-      trainers.forEach(t => this.selectedTrainerIds.add(t.id));
+      this.displayedTrainers.forEach(t => this.selectedTrainerIds.add(t.id));
     }
   }
 
   isAllSelected(): boolean {
-    const trainers = this.filteredTrainers;
-    return trainers.length > 0 && trainers.every(t => this.selectedTrainerIds.has(t.id));
+    return this.displayedTrainers.length > 0 && this.displayedTrainers.every(t => this.selectedTrainerIds.has(t.id));
   }
 
   isPartiallySelected(): boolean {
-    const trainers = this.filteredTrainers;
-    const selectedCount = trainers.filter(t => this.selectedTrainerIds.has(t.id)).length;
-    return selectedCount > 0 && selectedCount < trainers.length;
+    const selectedCount = this.displayedTrainers.filter(t => this.selectedTrainerIds.has(t.id)).length;
+    return selectedCount > 0 && selectedCount < this.displayedTrainers.length;
   }
 
   confirmBulkDelete(): void {
@@ -398,7 +473,6 @@ export class AdminTrainersComponent implements OnInit {
     this.showBulkDeleteConfirm = false;
     if (ids.length === 0) return;
 
-    // Optimistic UI update: Instantly remove deleted trainers from view in memory
     const previousTrainers = [...this.trainers];
     const previousSelected = new Set(this.selectedTrainerIds);
     this.selectedTrainerIds.clear();
@@ -408,14 +482,7 @@ export class AdminTrainersComponent implements OnInit {
       next: res => {
         if (res.success) {
           this.toastService.success(`Successfully deleted ${res.data} trainer(s). Cohort assignments were released.`);
-          this.adminService.getAllTrainersPaged(this.currentPage, this.pageSize).subscribe({
-            next: r => {
-              if (r.success) {
-                this.pagedData = r.data;
-                this.trainers = r.data.content;
-              }
-            }
-          });
+          this.loadTrainers(true);
         }
       },
       error: () => {
@@ -428,12 +495,14 @@ export class AdminTrainersComponent implements OnInit {
 
   onPageChange(page: number): void {
     this.currentPage = page;
+    this.syncState();
     this.loadTrainers();
   }
 
   onPageSizeChange(size: number): void {
-    this.pageSize = size;
+    this.pageSize = Number(size);
     this.currentPage = 0;
+    this.syncState();
     this.loadTrainers();
   }
 
@@ -471,7 +540,7 @@ export class AdminTrainersComponent implements OnInit {
 
   onTrainerSaved(t: Trainer): void {
     this.showTrainerModal = false;
-    this.loadTrainers();
+    this.loadTrainers(true);
   }
 
   toggleAvailability(t: Trainer): void {
@@ -480,7 +549,7 @@ export class AdminTrainersComponent implements OnInit {
       next: res => {
         if (res.success) {
           this.toastService.info(`Trainer ${t.name} is now ${newAvail ? 'Available' : 'Unavailable'}.`);
-          this.loadTrainers();
+          this.loadTrainers(true);
         }
       },
       error: () => {
@@ -495,7 +564,6 @@ export class AdminTrainersComponent implements OnInit {
     const id = this.trainerToDelete.id;
     this.trainerToDelete = null;
 
-    // Optimistic UI update: Instantly remove trainer from view in memory
     const previousTrainers = [...this.trainers];
     this.trainers = this.trainers.filter(t => t.id !== id);
 
@@ -503,26 +571,13 @@ export class AdminTrainersComponent implements OnInit {
       next: res => {
         if (res.success) {
           this.toastService.success(`Trainer ${name} deleted successfully.`);
+          this.loadTrainers(true);
         }
       },
       error: () => {
         this.trainers = previousTrainers;
         this.toastService.error(`Failed to delete trainer.`);
       }
-    });
-  }
-
-  get filteredTrainers(): Trainer[] {
-    return this.trainers.filter(t => {
-      const q = this.searchQuery.toLowerCase();
-      const matchesSearch = !this.searchQuery ||
-        t.name.toLowerCase().includes(q) ||
-        t.serviceLine.toLowerCase().includes(q) ||
-        t.skills.some(s => s.toLowerCase().includes(q));
-
-      const matchesStatus = !this.statusFilter || t.status === this.statusFilter;
-
-      return matchesSearch && matchesStatus;
     });
   }
 

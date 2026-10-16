@@ -21,6 +21,16 @@ public interface TrainerRepository extends JpaRepository<Trainer, Long> {
     @Query("SELECT t FROM Trainer t WHERE t.id = :id")
     Optional<Trainer> findByIdForUpdate(@Param("id") Long id);
 
+    @Query("SELECT t FROM Trainer t LEFT JOIN FETCH t.user")
+    List<Trainer> findAllWithUser();
+
+    /** Consolidated Admin Trainer Metrics in ONE single aggregate query */
+    @Query("SELECT " +
+           "COUNT(t), " +
+           "SUM(CASE WHEN t.currentWorkload < t.maxWorkload AND (t.availableTill IS NULL OR t.availableTill >= :today) THEN 1L ELSE 0L END) " +
+           "FROM Trainer t")
+    Object[] getAdminTrainerMetrics(@Param("today") LocalDate today);
+
     /** Count trainers who have workload headroom AND whose availability has not expired */
     @Query("SELECT COUNT(t) FROM Trainer t WHERE t.currentWorkload < t.maxWorkload " +
            "AND (t.availableTill IS NULL OR t.availableTill >= :today)")
@@ -30,6 +40,25 @@ public interface TrainerRepository extends JpaRepository<Trainer, Long> {
     @Query("SELECT COUNT(t) FROM Trainer t WHERE t.currentWorkload >= t.maxWorkload " +
            "OR (t.availableTill IS NOT NULL AND t.availableTill < :today)")
     long countUnavailableTrainers(@Param("today") LocalDate today);
+
+    /** Server-side search & pagination for trainers (Eliminates N+1 with JOIN FETCH) */
+    @Query(value = "SELECT t FROM Trainer t " +
+                   "LEFT JOIN FETCH t.user u " +
+                   "WHERE (:search IS NULL OR :search = '' OR (" +
+                   "   LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                   "   LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                   "   LOWER(t.skillSet) LIKE LOWER(CONCAT('%', :search, '%'))" +
+                   "))",
+           countQuery = "SELECT COUNT(t) FROM Trainer t " +
+                        "LEFT JOIN t.user u " +
+                        "WHERE (:search IS NULL OR :search = '' OR (" +
+                        "   LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                        "   LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                        "   LOWER(t.skillSet) LIKE LOWER(CONCAT('%', :search, '%'))" +
+                        "))")
+    org.springframework.data.domain.Page<Trainer> findAllFiltered(
+            @Param("search") String search,
+            org.springframework.data.domain.Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.transaction.annotation.Transactional

@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ExcelService {
@@ -68,162 +69,194 @@ public class ExcelService {
         if (filename == null || (!filename.toLowerCase().endsWith(".xlsx") && !filename.toLowerCase().endsWith(".xls"))) {
             throw new InvalidFileException("Unsupported file format. Please upload an Excel file (.xlsx).");
         }
+ 
+         List<ExcelValidationError> errors = new ArrayList<>();
+         List<Cohort> validCohorts = new ArrayList<>();
+         Set<String> seenCodesInBatch = new HashSet<>();
+         int totalRows = 0;
+ 
+         try (InputStream is = file.getInputStream();
+              Workbook workbook = WorkbookFactory.create(is)) {
+ 
+             Sheet sheet = workbook.getSheetAt(0);
+             Iterator<Row> rowIterator = sheet.iterator();
+ 
+             // Read header row and map column indices
+             Map<String, Integer> headerMap = new HashMap<>();
+             if (rowIterator.hasNext()) {
+                 Row headerRow = rowIterator.next();
+                 for (Cell cell : headerRow) {
+                     String header = getCellStringValue(cell);
+                     if (header != null) {
+                         headerMap.put(header.trim().toLowerCase(), cell.getColumnIndex());
+                     }
+                 }
+             }
+ 
+             // Validate required headers exist
+             for (String requiredHeader : REQUIRED_HEADERS.keySet()) {
+                 if (!headerMap.containsKey(requiredHeader)) {
+                     throw new InvalidFileException("Missing required column: " + requiredHeader);
+                 }
+             }
+ 
+             // Collect all non-empty rows for batch processing
+             List<Row> dataRows = new ArrayList<>();
+             Set<String> allCodesInFile = new HashSet<>();
+ 
+             while (rowIterator.hasNext()) {
+                 Row row = rowIterator.next();
+                 if (!isRowEmpty(row)) {
+                     dataRows.add(row);
+                     String code = getCellStringValue(row.getCell(headerMap.get("cohort code")));
+                     if (code != null && !code.trim().isEmpty()) {
+                         allCodesInFile.add(code.trim().toUpperCase());
+                     }
+                 }
+             }
+ 
+             totalRows = dataRows.size();
+ 
+             // Single batch query to find all existing cohort codes in DB (O(1) memory lookup)
+             Collection<String> dbCodes = allCodesInFile.isEmpty() ? null : cohortRepository.findExistingCohortCodes(allCodesInFile);
+             Set<String> existingInDb = (dbCodes != null) 
+                     ? dbCodes.stream().map(String::toUpperCase).collect(Collectors.toSet())
+                     : Collections.emptySet();
+ 
+             int rowNumber = 1; // Header is row 1
+ 
+             for (Row row : dataRows) {
+                 rowNumber++;
+ 
+                 // Read columns using header map
+                 String cohortCode = getCellStringValue(row.getCell(headerMap.get("cohort code")));
+                 String serviceLine = getCellStringValue(row.getCell(headerMap.get("service line")));
+                 String stream = getCellStringValue(row.getCell(headerMap.get("stream")));
+                 String requiredSkill = getCellStringValue(row.getCell(headerMap.get("required skill")));
+                 String traineesStr = getCellStringValue(row.getCell(headerMap.get("number of trainees")));
+                 LocalDate startDate = getCellDateValue(row.getCell(headerMap.get("start date")));
+                 LocalDate endDate = getCellDateValue(row.getCell(headerMap.get("end date")));
+                 String vertical = getCellStringValue(row.getCell(headerMap.get("vertical")));
+                 String location = getCellStringValue(row.getCell(headerMap.get("location")));
+ 
+                 boolean rowHasError = false;
+ 
+                 // Rule 1: Cohort Code validation
+                 if (cohortCode == null || cohortCode.trim().isEmpty()) {
+                     errors.add(new ExcelValidationError(rowNumber, "Cohort code is required"));
+                     rowHasError = true;
+                 } else {
+                     cohortCode = cohortCode.trim();
+                     String upperCode = cohortCode.toUpperCase();
+                     if (seenCodesInBatch.contains(upperCode)) {
+                         errors.add(new ExcelValidationError(rowNumber, "Duplicate cohort code within file: " + cohortCode));
+                         rowHasError = true;
+                     } else if (existingInDb.contains(upperCode) || cohortRepository.existsByCohortCode(cohortCode)) {
+                         errors.add(new ExcelValidationError(rowNumber, "Cohort code already exists: " + cohortCode));
+                         rowHasError = true;
+                     } else {
+                         seenCodesInBatch.add(upperCode);
+                     }
+                 }
+ 
+                 // Rule 2: Required Skill validation
+                 if (requiredSkill == null || requiredSkill.trim().isEmpty()) {
+                     errors.add(new ExcelValidationError(rowNumber, "Required skill is required"));
+                     rowHasError = true;
+                 }
+ 
+                 // Rule 3: Number of Trainees validation
+                 Integer trainees = null;
+                 try {
+                     if (traineesStr == null || traineesStr.trim().isEmpty()) {
+                         errors.add(new ExcelValidationError(rowNumber, "Number of trainees is required"));
+                         rowHasError = true;
+                     } else {
+                         double val = Double.parseDouble(traineesStr.trim());
+                         trainees = (int) val;
+                         if (trainees <= 0) {
+                             errors.add(new ExcelValidationError(rowNumber, "Number of trainees must be greater than zero"));
+                             rowHasError = true;
+                         }
+                     }
+                 } catch (NumberFormatException e) {
+                     errors.add(new ExcelValidationError(rowNumber, "Number of trainees must be numeric"));
+                     rowHasError = true;
+                 }
+ 
+                 // Rule 4: Start Date validation
+                 if (startDate == null) {
+                     errors.add(new ExcelValidationError(rowNumber, "Start date is required (format: DD-MMM-YYYY or YYYY-MM-DD)"));
+                     rowHasError = true;
+                 }
+ 
+                 // Rule 5: End Date validation
+                 if (endDate == null) {
+                     errors.add(new ExcelValidationError(rowNumber, "End date is required (format: DD-MMM-YYYY or YYYY-MM-DD)"));
+                     rowHasError = true;
+                 } else if (startDate != null && endDate.isBefore(startDate)) {
+                     errors.add(new ExcelValidationError(rowNumber, "End date cannot be before start date"));
+                     rowHasError = true;
+                 }
+ 
+                 if (!rowHasError) {
+                     Cohort cohort = new Cohort();
+                     cohort.setCohortCode(cohortCode);
+                     cohort.setServiceLine(serviceLine != null && !serviceLine.trim().isEmpty() ? serviceLine.trim() : "General");
+                     cohort.setStream(stream != null && !stream.trim().isEmpty() ? stream.trim() : "Software Development");
+                     cohort.setRequiredSkill(requiredSkill.trim());
+                     cohort.setTraineeCount(trainees);
+                     cohort.setStartDate(startDate);
+                     cohort.setEndDate(endDate);
+                     cohort.setVertical(vertical != null && !vertical.trim().isEmpty() ? vertical.trim() : "General");
+                     cohort.setLocation(location != null && !location.trim().isEmpty() ? location.trim() : "Chennai");
+                     cohort.setCoachUser(coachUser);
+                     cohort.setStatus(CohortStatus.PENDING);
+ 
+                     validCohorts.add(cohort);
+                 }
+             }
+ 
+         } catch (IOException e) {
+             throw new InvalidFileException("Failed to read Excel file: " + e.getMessage());
+         }
+ 
+         int successfulRows = 0;
+         List<com.trainmate.dto.CohortResponse> allocatedCohorts = new ArrayList<>();
+ 
+         // High-throughput batch allocation and persistence
+         if (!validCohorts.isEmpty()) {
+             List<Cohort> allocated = null;
+             try {
+                 allocated = trainerAllocationService.allocateBatch(validCohorts);
+             } catch (Exception ignored) {
+             }
 
-        List<ExcelValidationError> errors = new ArrayList<>();
-        List<Cohort> validCohorts = new ArrayList<>();
-        Set<String> seenCodesInBatch = new HashSet<>();
-        int totalRows = 0;
-
-        try (InputStream is = file.getInputStream();
-             Workbook workbook = WorkbookFactory.create(is)) {
-
-            Sheet sheet = workbook.getSheetAt(0);
-            Iterator<Row> rowIterator = sheet.iterator();
-
-            // Read header row and map column indices
-            Map<String, Integer> headerMap = new HashMap<>();
-            if (rowIterator.hasNext()) {
-                Row headerRow = rowIterator.next();
-                for (Cell cell : headerRow) {
-                    String header = getCellStringValue(cell);
-                    if (header != null) {
-                        headerMap.put(header.trim().toLowerCase(), cell.getColumnIndex());
-                    }
-                }
-            }
-
-            // Validate required headers exist
-            for (String requiredHeader : REQUIRED_HEADERS.keySet()) {
-                if (!headerMap.containsKey(requiredHeader)) {
-                    throw new InvalidFileException("Missing required column: " + requiredHeader);
-                }
-            }
-
-            int rowNumber = 1; // 1-based index (Header is row 1, data starts row 2)
-
-            while (rowIterator.hasNext()) {
-                Row row = rowIterator.next();
-                rowNumber++;
-
-                // If entire row is empty, skip
-                if (isRowEmpty(row)) {
-                    continue;
-                }
-
-                totalRows++;
-
-                // Read columns using header map
-                String cohortCode = getCellStringValue(row.getCell(headerMap.get("cohort code")));
-                String serviceLine = getCellStringValue(row.getCell(headerMap.get("service line")));
-                String stream = getCellStringValue(row.getCell(headerMap.get("stream")));
-                String requiredSkill = getCellStringValue(row.getCell(headerMap.get("required skill")));
-                String traineesStr = getCellStringValue(row.getCell(headerMap.get("number of trainees")));
-                LocalDate startDate = getCellDateValue(row.getCell(headerMap.get("start date")));
-                LocalDate endDate = getCellDateValue(row.getCell(headerMap.get("end date")));
-                String vertical = getCellStringValue(row.getCell(headerMap.get("vertical")));
-                String location = getCellStringValue(row.getCell(headerMap.get("location")));
-
-                boolean rowHasError = false;
-
-                // Rule 1: Cohort Code validation
-                if (cohortCode == null || cohortCode.trim().isEmpty()) {
-                    errors.add(new ExcelValidationError(rowNumber, "Cohort code is required"));
-                    rowHasError = true;
-                } else {
-                    cohortCode = cohortCode.trim();
-                    if (seenCodesInBatch.contains(cohortCode.toUpperCase())) {
-                        errors.add(new ExcelValidationError(rowNumber, "Duplicate cohort code within file: " + cohortCode));
-                        rowHasError = true;
-                    } else if (cohortRepository.existsByCohortCode(cohortCode)) {
-                        errors.add(new ExcelValidationError(rowNumber, "Cohort code already exists: " + cohortCode));
-                        rowHasError = true;
-                    } else {
-                        seenCodesInBatch.add(cohortCode.toUpperCase());
-                    }
-                }
-
-                // Rule 2: Required Skill validation
-                if (requiredSkill == null || requiredSkill.trim().isEmpty()) {
-                    errors.add(new ExcelValidationError(rowNumber, "Required skill is required"));
-                    rowHasError = true;
-                }
-
-                // Rule 3: Number of Trainees validation
-                Integer trainees = null;
-                try {
-                    if (traineesStr == null || traineesStr.trim().isEmpty()) {
-                        errors.add(new ExcelValidationError(rowNumber, "Number of trainees is required"));
-                        rowHasError = true;
-                    } else {
-                        // Handle possible float strings from Excel numeric cells like "50.0"
-                        double val = Double.parseDouble(traineesStr.trim());
-                        trainees = (int) val;
-                        if (trainees <= 0) {
-                            errors.add(new ExcelValidationError(rowNumber, "Number of trainees must be greater than zero"));
-                            rowHasError = true;
-                        }
-                    }
-                } catch (NumberFormatException e) {
-                    errors.add(new ExcelValidationError(rowNumber, "Number of trainees must be numeric"));
-                    rowHasError = true;
-                }
-
-                // Rule 4: Start Date validation
-                if (startDate == null) {
-                    errors.add(new ExcelValidationError(rowNumber, "Start date is required (format: DD-MMM-YYYY or YYYY-MM-DD)"));
-                    rowHasError = true;
-                }
-
-                // Rule 5: End Date validation
-                if (endDate == null) {
-                    errors.add(new ExcelValidationError(rowNumber, "End date is required (format: DD-MMM-YYYY or YYYY-MM-DD)"));
-                    rowHasError = true;
-                } else if (startDate != null && endDate.isBefore(startDate)) {
-                    errors.add(new ExcelValidationError(rowNumber, "End date cannot be before start date"));
-                    rowHasError = true;
-                }
-
-                if (!rowHasError) {
-                    Cohort cohort = new Cohort();
-                    cohort.setCohortCode(cohortCode);
-                    cohort.setServiceLine(serviceLine != null && !serviceLine.trim().isEmpty() ? serviceLine.trim() : "General");
-                    cohort.setStream(stream != null && !stream.trim().isEmpty() ? stream.trim() : "Software Development");
-                    cohort.setRequiredSkill(requiredSkill.trim());
-                    cohort.setTraineeCount(trainees);
-                    cohort.setStartDate(startDate);
-                    cohort.setEndDate(endDate);
-                    cohort.setVertical(vertical != null && !vertical.trim().isEmpty() ? vertical.trim() : "General");
-                    cohort.setLocation(location != null && !location.trim().isEmpty() ? location.trim() : "Chennai");
-                    cohort.setCoachUser(coachUser);
-                    cohort.setStatus(CohortStatus.PENDING);
-
-                    validCohorts.add(cohort);
-                }
-            }
-
-        } catch (IOException e) {
-            throw new InvalidFileException("Failed to read Excel file: " + e.getMessage());
-        }
-
-        int successfulRows = 0;
-        List<com.trainmate.dto.CohortResponse> allocatedCohorts = new ArrayList<>();
-        // Save and allocate each valid cohort in an isolated boundary so large batches never crash midway
-        for (Cohort cohort : validCohorts) {
-            try {
-                Cohort saved = cohortRepository.save(cohort);
-                trainerAllocationService.allocateTrainer(saved);
-                Cohort refreshed = cohortRepository.findById(saved.getId()).orElse(saved);
-                allocatedCohorts.add(cohortService.mapToResponse(refreshed));
-                successfulRows++;
-            } catch (Exception ex) {
-                errors.add(new ExcelValidationError(0, "Cohort " + cohort.getCohortCode() + ": Allocation skipped (" + ex.getMessage() + ")"));
-            }
-        }
-
-        int failedRows = totalRows - successfulRows;
-
-        return new CohortUploadResponse(totalRows, successfulRows, failedRows, errors, allocatedCohorts);
-    }
+             if (allocated != null && !allocated.isEmpty()) {
+                 for (Cohort c : allocated) {
+                     allocatedCohorts.add(cohortService.mapToResponse(c));
+                     successfulRows++;
+                 }
+             } else {
+                 // Fallback to row-by-row allocation if batch is unavailable
+                 for (Cohort cohort : validCohorts) {
+                     try {
+                         Cohort saved = cohortRepository.save(cohort);
+                         trainerAllocationService.allocateTrainer(saved);
+                         Cohort refreshed = cohortRepository.findById(saved.getId()).orElse(saved);
+                         allocatedCohorts.add(cohortService.mapToResponse(refreshed));
+                         successfulRows++;
+                     } catch (Exception individualEx) {
+                         errors.add(new ExcelValidationError(0, "Cohort " + cohort.getCohortCode() + ": Allocation skipped (" + individualEx.getMessage() + ")"));
+                     }
+                 }
+             }
+         }
+ 
+         int failedRows = totalRows - successfulRows;
+ 
+         return new CohortUploadResponse(totalRows, successfulRows, failedRows, errors, allocatedCohorts);
+     }
 
     /**
      * Generates a downloadable sample Excel template (.xlsx) with header styles and example rows.

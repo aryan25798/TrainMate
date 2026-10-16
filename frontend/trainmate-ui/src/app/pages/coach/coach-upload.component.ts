@@ -331,15 +331,32 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
                 </button>
               </div>
 
+              <!-- Multi-Stage Progress Tracker -->
+              <div *ngIf="isUploading" class="p-3 bg-light rounded-3 border mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="small fw-bold text-primary">{{ uploadStatusText }}</span>
+                  <span class="badge bg-primary">Stage {{ uploadStage }} of 4</span>
+                </div>
+                <div class="progress mb-2" style="height: 8px;">
+                  <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" [style.width.%]="uploadStage * 25"></div>
+                </div>
+                <div class="d-flex justify-content-between text-muted" style="font-size: 0.72rem;">
+                  <span [class.fw-bold]="uploadStage >= 1" [class.text-primary]="uploadStage === 1">1. Format Check</span>
+                  <span [class.fw-bold]="uploadStage >= 2" [class.text-primary]="uploadStage === 2">2. Batch Duplicates</span>
+                  <span [class.fw-bold]="uploadStage >= 3" [class.text-primary]="uploadStage === 3">3. 100-Pt Allocation</span>
+                  <span [class.fw-bold]="uploadStage >= 4" [class.text-primary]="uploadStage === 4">4. Persistence</span>
+                </div>
+              </div>
+
               <!-- Upload Button & Loading -->
-              <div class="d-flex gap-2 align-items-center">
+              <div class="d-flex gap-2 align-items-center flex-wrap">
                 <button
                   type="button"
                   class="btn btn-primary-custom"
                   [disabled]="!selectedFile || isUploading"
                   (click)="uploadFile()">
                   <span *ngIf="isUploading" class="spinner-border spinner-border-sm me-2"></span>
-                  {{ isUploading ? uploadStatusText : 'Upload & Allocate All Rows' }}
+                  {{ isUploading ? 'Processing Batch...' : 'Upload & Allocate All Rows' }}
                 </button>
 
                 <button *ngIf="uploadResponse" routerLink="/coach/cohorts" class="btn btn-secondary-custom">
@@ -355,8 +372,15 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
 
           <!-- Upload Results Summary -->
           <div class="content-card" *ngIf="uploadResponse">
-            <div class="content-card-header">
-              <h3 class="content-card-title">Upload Completed</h3>
+            <div class="content-card-header d-flex justify-content-between align-items-center">
+              <h3 class="content-card-title mb-0">Upload Completed</h3>
+              <button
+                *ngIf="uploadResponse.errors && uploadResponse.errors.length > 0"
+                type="button"
+                class="btn btn-sm btn-outline-danger"
+                (click)="downloadErrorReportCsv()">
+                <i class="bi bi-download me-1"></i> Download Error Report (.csv)
+              </button>
             </div>
             <div class="p-4">
               <div class="row text-center mb-3">
@@ -382,12 +406,17 @@ import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.c
 
               <!-- Errors List -->
               <div *ngIf="uploadResponse.errors && uploadResponse.errors.length > 0">
-                <h6 class="fw-bold text-danger mb-2">
-                  <i class="bi bi-exclamation-circle-fill me-1"></i> Validation Errors
-                </h6>
-                <div class="table-responsive border rounded-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="fw-bold text-danger mb-0">
+                    <i class="bi bi-exclamation-circle-fill me-1"></i> Validation Errors ({{ uploadResponse.errors.length }})
+                  </h6>
+                  <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 small" (click)="downloadErrorReportCsv()">
+                    Export CSV
+                  </button>
+                </div>
+                <div class="table-responsive border rounded-3" style="max-height: 250px; overflow-y: auto;">
                   <table class="table table-sm table-striped mb-0">
-                    <thead class="table-light">
+                    <thead class="table-light sticky-top">
                       <tr>
                         <th style="width: 100px;">Excel Row</th>
                         <th>Error Description</th>
@@ -526,9 +555,11 @@ export class CoachUploadComponent {
   // Excel Upload State
   selectedFile: File | null = null;
   isUploading: boolean = false;
+  uploadStage: number = 0;
   uploadStatusText: string = 'Uploading Excel...';
   uploadResponse: CohortUploadResponse | null = null;
   errorMessage: string = '';
+  private stageInterval: any = null;
 
   constructor(
     private coachService: CoachService,
@@ -636,32 +667,82 @@ export class CoachUploadComponent {
   uploadFile(): void {
     if (!this.selectedFile) return;
 
+    // Client-side file size constraint (Max 5MB)
+    if (this.selectedFile.size > 5 * 1024 * 1024) {
+      this.errorMessage = 'File size exceeds the 5MB limit. Please upload a smaller batch.';
+      return;
+    }
+
     this.isUploading = true;
-    this.uploadStatusText = 'Uploading Excel & Running Allocation Engine...';
+    this.uploadStage = 1;
+    this.uploadStatusText = 'Validating file format and row schema...';
     this.errorMessage = '';
 
     const user = this.authService.currentUserValue;
     const coachId = user?.coachId ?? user?.userId;
-    if (!coachId) { this.isUploading = false; this.errorMessage = 'Session expired. Please log in again.'; return; }
+    if (!coachId) {
+      this.isUploading = false;
+      this.uploadStage = 0;
+      this.errorMessage = 'Session expired. Please log in again.';
+      return;
+    }
+
+    // Progression timer for multi-stage feedback
+    this.stageInterval = setInterval(() => {
+      if (this.uploadStage === 1) {
+        this.uploadStage = 2;
+        this.uploadStatusText = 'Scanning cohort codes for batch duplicates...';
+      } else if (this.uploadStage === 2) {
+        this.uploadStage = 3;
+        this.uploadStatusText = 'Running 100-point FIFO trainer allocation engine...';
+      }
+    }, 700);
 
     this.coachService.uploadCohorts(coachId, this.selectedFile!).subscribe({
       next: res => {
-        this.isUploading = false;
-        if (res.success) {
-          this.uploadResponse = res.data;
-          this.selectedFile = null;
-        } else {
-          this.errorMessage = res.message;
-        }
+        clearInterval(this.stageInterval);
+        this.uploadStage = 4;
+        this.uploadStatusText = 'Saving cohorts and notifications...';
+        setTimeout(() => {
+          this.isUploading = false;
+          this.uploadStage = 0;
+          if (res.success) {
+            this.uploadResponse = res.data;
+            this.selectedFile = null;
+          } else {
+            this.errorMessage = res.message;
+          }
+        }, 300);
       },
       error: err => {
+        clearInterval(this.stageInterval);
         this.isUploading = false;
+        this.uploadStage = 0;
         this.errorMessage = err.error?.message || 'Error processing Excel file.';
         if (err.error?.data) {
           this.uploadResponse = err.error.data;
         }
       }
     });
+  }
+
+  downloadErrorReportCsv(): void {
+    if (!this.uploadResponse || !this.uploadResponse.errors || this.uploadResponse.errors.length === 0) {
+      return;
+    }
+
+    const headers = 'Excel Row,Error Description\n';
+    const rows = this.uploadResponse.errors
+      .map(e => `"${e.row}","${e.message.replace(/"/g, '""')}"`)
+      .join('\n');
+
+    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cohort_upload_validation_errors.csv`;
+    a.click();
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
   }
 
   getInitials(name?: string): string {

@@ -1,6 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { AdminService } from '../../services/admin.service';
 import { CohortService } from '../../services/cohort.service';
 import { ToastService } from '../../services/toast.service';
@@ -30,7 +32,10 @@ import { getInitials } from '../../shared/utils/helpers';
     <div>
       <div class="page-header">
         <div>
-          <h1 class="page-title">All System Cohorts</h1>
+          <h1 class="page-title d-flex align-items-center gap-2">
+            <span>All System Cohorts</span>
+            <span *ngIf="isRefreshing" class="spinner-border spinner-border-sm text-primary" title="Syncing in background..."></span>
+          </h1>
           <p class="page-subtitle">Master list of cohorts, allocation scores, and trainer assignments across all academy streams.</p>
         </div>
         <div class="d-flex align-items-center gap-2">
@@ -59,24 +64,23 @@ import { getInitials } from '../../shared/utils/helpers';
                 class="form-control"
                 placeholder="Search code, skill, coach, trainer..."
                 [(ngModel)]="searchQuery"
-                (ngModelChange)="applyFilter()"
+                (ngModelChange)="onSearchInput($event)"
               />
             </div>
           </div>
           <div class="col-md-2">
-            <select class="form-select" [(ngModel)]="statusFilter" (ngModelChange)="applyFilter()">
+            <select class="form-select" [(ngModel)]="statusFilter" (ngModelChange)="onFilterChange()">
               <option value="">All Statuses</option>
               <option value="ASSIGNED">Assigned</option>
               <option value="UNASSIGNED">Unassigned</option>
               <option value="PENDING">Pending</option>
-              <option value="PROCESSING">Processing</option>
               <option value="ACTIVE">Active</option>
               <option value="COMPLETED">Completed</option>
               <option value="CANCELLED">Cancelled</option>
             </select>
           </div>
           <div class="col-md-2">
-            <select class="form-select" [(ngModel)]="serviceLineFilter" (ngModelChange)="applyFilter()">
+            <select class="form-select" [(ngModel)]="serviceLineFilter" (ngModelChange)="onFilterChange()">
               <option value="">All Service Lines</option>
               <option *ngFor="let sl of serviceLines" [value]="sl">{{ sl }}</option>
             </select>
@@ -89,20 +93,22 @@ import { getInitials } from '../../shared/utils/helpers';
               (click)="resetFilters()">
               <i class="bi bi-x-circle me-1"></i>Reset Filters
             </button>
-            <span class="text-muted small" *ngIf="pagedData">
+            <span class="text-muted small" *ngIf="pagedData && pagedData.totalElements > 0">
               Showing {{ (pagedData.number || 0) * (pagedData.size || 20) + 1 }} to 
               {{ Math.min((pagedData.number || 0) * (pagedData.size || 20) + (pagedData.numberOfElements || 0), pagedData.totalElements || 0) }} 
               of {{ pagedData.totalElements || 0 }}
             </span>
           </div>
         </div>
+      </div>
+
       <!-- Error State with Retry -->
       <app-error-card
         *ngIf="hasError"
         title="Unable to load cohorts"
         message="A network error occurred or the cloud server is waking up. Click below to retry."
         [isRetrying]="isLoading"
-        (retry)="loadCohorts()">
+        (retry)="loadCohorts(true)">
       </app-error-card>
 
       <!-- Cohorts Table -->
@@ -133,8 +139,8 @@ import { getInitials } from '../../shared/utils/helpers';
               </tr>
             </thead>
             <tbody>
-              <!-- Skeleton Loading Rows -->
-              <ng-container *ngIf="isLoading">
+              <!-- Skeleton Loading Rows (Only when no cached content is available) -->
+              <ng-container *ngIf="isLoading && cohorts.length === 0">
                 <tr *ngFor="let i of [1,2,3,4,5,6]">
                   <td class="text-center"><div class="skeleton-shimmer" style="width:16px;height:16px;border-radius:4px;"></div></td>
                   <td><div class="skeleton-shimmer" style="width:95px;height:16px;border-radius:4px;"></div></td>
@@ -154,8 +160,8 @@ import { getInitials } from '../../shared/utils/helpers';
                 </tr>
               </ng-container>
 
-              <ng-container *ngIf="!isLoading">
-              <tr *ngFor="let c of filteredCohorts" [class.table-active]="selectedCohortIds.has(c.id)">
+              <ng-container *ngIf="cohorts.length > 0">
+              <tr *ngFor="let c of cohorts" [class.table-active]="selectedCohortIds.has(c.id)">
                 <td class="text-center" data-label="Select">
                   <input
                     type="checkbox"
@@ -229,27 +235,28 @@ import { getInitials } from '../../shared/utils/helpers';
                     </button>
                   </div>
                 </td>
-                </tr>
-                <tr *ngIf="filteredCohorts.length === 0">
-                  <td colspan="10" class="text-center py-5">
-                    <div class="d-flex flex-column align-items-center justify-content-center">
-                      <i class="bi bi-diagram-3 text-muted opacity-50 mb-2" style="font-size: 2.5rem;"></i>
-                      <h6 class="text-dark fw-bold mb-1">No matching cohorts</h6>
-                      <p class="text-muted small mb-3">No cohorts match your current search and filter settings.</p>
-                      <button class="btn btn-sm btn-outline-primary" *ngIf="searchQuery || statusFilter || serviceLineFilter" (click)="resetFilters()">
-                        <i class="bi bi-x-circle me-1"></i> Clear All Filters
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+              </tr>
               </ng-container>
+
+              <tr *ngIf="!isLoading && cohorts.length === 0">
+                <td colspan="10" class="text-center py-5">
+                  <div class="d-flex flex-column align-items-center justify-content-center">
+                    <i class="bi bi-diagram-3 text-muted opacity-50 mb-2" style="font-size: 2.5rem;"></i>
+                    <h6 class="text-dark fw-bold mb-1">No matching cohorts</h6>
+                    <p class="text-muted small mb-3">No cohorts match your current search and filter settings.</p>
+                    <button class="btn btn-sm btn-outline-primary" *ngIf="searchQuery || statusFilter || serviceLineFilter" (click)="resetFilters()">
+                      <i class="bi bi-x-circle me-1"></i> Clear All Filters
+                    </button>
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
       </div>
 
       <!-- Pagination Controls -->
-      <div class="content-card p-3" *ngIf="pagedData && pagedData.totalPages > 1">
+      <div class="content-card p-3 mt-3" *ngIf="pagedData && pagedData.totalPages > 1">
         <nav aria-label="Cohort pagination">
           <ul class="pagination pagination-sm justify-content-center mb-0">
             <li class="page-item" [class.disabled]="pagedData.first">
@@ -278,13 +285,17 @@ import { getInitials } from '../../shared/utils/helpers';
           </ul>
         </nav>
         <div class="d-flex justify-content-between align-items-center mt-2">
-          <select class="form-select form-select-sm w-auto" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange($event)" style="width: 80px;">
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-          </select>
-          <small class="text-muted">Page {{ pagedData.number + 1 }} of {{ pagedData.totalPages }}</small>
+          <div class="d-flex align-items-center gap-2">
+            <label class="small text-muted mb-0">Show</label>
+            <select class="form-select form-select-sm w-auto" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange($event)">
+              <option [value]="10">10</option>
+              <option [value]="20">20</option>
+              <option [value]="50">50</option>
+              <option [value]="100">100</option>
+            </select>
+            <label class="small text-muted mb-0">per page</label>
+          </div>
+          <small class="text-muted">Page {{ (pagedData.number || 0) + 1 }} of {{ pagedData.totalPages || 1 }} ({{ pagedData.totalElements || 0 }} total)</small>
         </div>
       </div>
     </div>
@@ -353,9 +364,8 @@ import { getInitials } from '../../shared/utils/helpers';
     }
   `]
 })
-export class AdminCohortsComponent implements OnInit {
+export class AdminCohortsComponent implements OnInit, OnDestroy {
   cohorts: Cohort[] = [];
-  displayedCohorts: Cohort[] = [];
   pagedData: PagedResponse<Cohort> | null = null;
   selectedCohortIds: Set<number> = new Set<number>();
   showBulkDeleteConfirm: boolean = false;
@@ -367,6 +377,7 @@ export class AdminCohortsComponent implements OnInit {
   pageSize: number = 20;
   sortBy: string = 'createdDate,desc';
   isLoading: boolean = true;
+  isRefreshing: boolean = false;
   hasError: boolean = false;
 
   selectedCohortForDetails: Cohort | null = null;
@@ -374,6 +385,9 @@ export class AdminCohortsComponent implements OnInit {
   editingCohort: Cohort | null = null;
   cohortToDelete: Cohort | null = null;
   reallocatingId: number | null = null;
+
+  private searchSubject = new Subject<string>();
+  private searchSub?: Subscription;
 
   Math = Math;
 
@@ -384,27 +398,124 @@ export class AdminCohortsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    // 1. Restore persistent filter & pagination state from service
+    const state = this.adminService.cohortsState;
+    this.currentPage = state.page;
+    this.pageSize = state.size;
+    this.sortBy = state.sort;
+    this.searchQuery = state.query;
+    this.statusFilter = state.status;
+    this.serviceLineFilter = state.serviceLine;
+
+    // 2. Setup debounced search subscription (300ms)
+    this.searchSub = this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged()
+    ).subscribe(term => {
+      this.searchQuery = term;
+      this.currentPage = 0;
+      this.syncState();
+      this.loadCohorts();
+    });
+
+    // 3. Load service line dropdown list
+    this.loadServiceLines();
+
+    // 4. Instant cache peek for zero-flicker UI
+    const cached = this.adminService.peekCohortsPaged(
+      this.searchQuery,
+      this.statusFilter,
+      this.serviceLineFilter,
+      this.currentPage,
+      this.pageSize,
+      this.sortBy
+    );
+    if (cached && cached.success && cached.data) {
+      this.pagedData = cached.data;
+      this.cohorts = cached.data.content;
+      this.isLoading = false;
+      this.isRefreshing = true;
+    }
+
     this.loadCohorts();
   }
 
-  loadCohorts(): void {
-    this.isLoading = true;
-    this.hasError = false;
-    this.adminService.getAllCohortsPaged(this.currentPage, this.pageSize, this.sortBy).subscribe({
+  ngOnDestroy(): void {
+    this.searchSub?.unsubscribe();
+  }
+
+  onSearchInput(val: string): void {
+    this.searchSubject.next(val);
+  }
+
+  onFilterChange(): void {
+    this.currentPage = 0;
+    this.syncState();
+    this.loadCohorts();
+  }
+
+  resetFilters(): void {
+    this.searchQuery = '';
+    this.statusFilter = '';
+    this.serviceLineFilter = '';
+    this.currentPage = 0;
+    this.syncState();
+    this.loadCohorts();
+  }
+
+  private syncState(): void {
+    this.adminService.cohortsState = {
+      page: this.currentPage,
+      size: this.pageSize,
+      sort: this.sortBy,
+      query: this.searchQuery,
+      status: this.statusFilter,
+      serviceLine: this.serviceLineFilter
+    };
+  }
+
+  loadServiceLines(): void {
+    this.adminService.getDistinctServiceLines().subscribe({
       next: res => {
-        if (res.success) {
+        if (res.success && res.data) {
+          this.serviceLines = res.data;
+        }
+      }
+    });
+  }
+
+  loadCohorts(forceRefresh: boolean = false): void {
+    if (this.cohorts.length === 0) {
+      this.isLoading = true;
+    } else {
+      this.isRefreshing = true;
+    }
+    this.hasError = false;
+
+    this.adminService.getAllCohortsPaged(
+      this.searchQuery,
+      this.statusFilter,
+      this.serviceLineFilter,
+      this.currentPage,
+      this.pageSize,
+      this.sortBy,
+      forceRefresh
+    ).subscribe({
+      next: res => {
+        if (res.success && res.data) {
           this.pagedData = res.data;
           this.cohorts = res.data.content;
-          this.displayedCohorts = res.data.content;
           this.selectedCohortIds.clear();
-          this.extractServiceLines();
-          this.applyFilter();
         }
         this.isLoading = false;
+        this.isRefreshing = false;
       },
       error: () => {
         this.isLoading = false;
-        this.hasError = true;
+        this.isRefreshing = false;
+        if (this.cohorts.length === 0) {
+          this.hasError = true;
+        }
       }
     });
   }
@@ -418,23 +529,20 @@ export class AdminCohortsComponent implements OnInit {
   }
 
   toggleSelectAll(): void {
-    const cohorts = this.filteredCohorts;
     if (this.isAllSelected()) {
       this.selectedCohortIds.clear();
     } else {
-      cohorts.forEach(c => this.selectedCohortIds.add(c.id));
+      this.cohorts.forEach(c => this.selectedCohortIds.add(c.id));
     }
   }
 
   isAllSelected(): boolean {
-    const cohorts = this.filteredCohorts;
-    return cohorts.length > 0 && cohorts.every(c => this.selectedCohortIds.has(c.id));
+    return this.cohorts.length > 0 && this.cohorts.every(c => this.selectedCohortIds.has(c.id));
   }
 
   isPartiallySelected(): boolean {
-    const cohorts = this.filteredCohorts;
-    const selectedCount = cohorts.filter(c => this.selectedCohortIds.has(c.id)).length;
-    return selectedCount > 0 && selectedCount < cohorts.length;
+    const selectedCount = this.cohorts.filter(c => this.selectedCohortIds.has(c.id)).length;
+    return selectedCount > 0 && selectedCount < this.cohorts.length;
   }
 
   confirmBulkDelete(): void {
@@ -447,27 +555,17 @@ export class AdminCohortsComponent implements OnInit {
     const previousSelected = new Set(this.selectedCohortIds);
     this.selectedCohortIds.clear();
     this.cohorts = this.cohorts.filter(c => !ids.includes(c.id));
-    this.applyFilter();
 
     this.adminService.bulkDeleteCohorts(ids).subscribe({
       next: res => {
         if (res.success) {
           this.toastService.success(`Successfully deleted ${res.data} cohort(s) and released trainer workloads.`);
-          this.adminService.getAllCohortsPaged(this.currentPage, this.pageSize, this.sortBy).subscribe({
-            next: r => {
-              if (r.success) {
-                this.pagedData = r.data;
-                this.cohorts = r.data.content;
-                this.applyFilter();
-              }
-            }
-          });
+          this.loadCohorts(true);
         }
       },
       error: () => {
         this.cohorts = previousCohorts;
         this.selectedCohortIds = previousSelected;
-        this.applyFilter();
         this.toastService.error(`Failed to delete selected cohorts. Changes were rolled back.`);
       }
     });
@@ -475,12 +573,14 @@ export class AdminCohortsComponent implements OnInit {
 
   onPageChange(page: number): void {
     this.currentPage = page;
+    this.syncState();
     this.loadCohorts();
   }
 
   onPageSizeChange(size: number): void {
-    this.pageSize = size;
+    this.pageSize = Number(size);
     this.currentPage = 0;
+    this.syncState();
     this.loadCohorts();
   }
 
@@ -504,23 +604,15 @@ export class AdminCohortsComponent implements OnInit {
     return pages;
   }
 
-  extractServiceLines(): void {
-    const sls = new Set<string>();
-    this.cohorts.forEach(c => {
-      if (c.serviceLine) sls.add(c.serviceLine);
-    });
-    this.serviceLines = Array.from(sls).sort();
-  }
-
   onCohortReassigned(updatedCohort: Cohort): void {
     this.selectedCohortForReassign = null;
     this.toastService.success(`Trainer reassigned for ${updatedCohort.cohortCode}.`);
-    this.loadCohorts();
+    this.loadCohorts(true);
   }
 
   onCohortUpdated(updated: Cohort): void {
     this.editingCohort = null;
-    this.loadCohorts();
+    this.loadCohorts(true);
   }
 
   onStatusChange(c: Cohort, newStatus: string): void {
@@ -531,7 +623,7 @@ export class AdminCohortsComponent implements OnInit {
       next: res => {
         if (res.success) {
           this.toastService.info(`Cohort ${c.cohortCode} status changed to ${newStatus}`);
-          this.loadCohorts();
+          this.loadCohorts(true);
         } else {
           c.status = previousStatus; // rollback
           this.toastService.error(`Failed to update status.`);
@@ -551,7 +643,7 @@ export class AdminCohortsComponent implements OnInit {
         this.reallocatingId = null;
         if (res.success) {
           this.toastService.success(`Re-allocated ${c.cohortCode}: Assigned to ${res.data.assignedTrainerName || 'Unassigned'}`);
-          this.loadCohorts();
+          this.loadCohorts(true);
           this.selectedCohortForDetails = res.data;
         }
       },
@@ -571,17 +663,16 @@ export class AdminCohortsComponent implements OnInit {
     // Optimistic UI update: Instantly remove cohort from view in memory
     const previousCohorts = [...this.cohorts];
     this.cohorts = this.cohorts.filter(c => c.id !== id);
-    this.applyFilter();
 
     this.cohortService.deleteCohort(id).subscribe({
       next: res => {
         if (res.success) {
           this.toastService.success(`Cohort ${code} deleted successfully.`);
+          this.loadCohorts(true);
         }
       },
       error: () => {
         this.cohorts = previousCohorts;
-        this.applyFilter();
         this.toastService.error(`Failed to delete cohort ${code}.`);
       }
     });
@@ -599,31 +690,6 @@ export class AdminCohortsComponent implements OnInit {
         this.toastService.success(`Allocation report downloaded.`);
       }
     });
-  }
-
-  filteredCohorts: Cohort[] = [];
-
-  applyFilter(): void {
-    const q = this.searchQuery ? this.searchQuery.toLowerCase().trim() : '';
-    this.filteredCohorts = this.cohorts.filter(c => {
-      const matchesSearch = !q ||
-        c.cohortCode.toLowerCase().includes(q) ||
-        c.requiredSkill.toLowerCase().includes(q) ||
-        (c.coachName && c.coachName.toLowerCase().includes(q)) ||
-        (c.assignedTrainerName && c.assignedTrainerName.toLowerCase().includes(q));
-
-      const matchesStatus = !this.statusFilter || c.status === this.statusFilter;
-      const matchesSL = !this.serviceLineFilter || c.serviceLine === this.serviceLineFilter;
-
-      return matchesSearch && matchesStatus && matchesSL;
-    });
-  }
-
-  resetFilters(): void {
-    this.searchQuery = '';
-    this.statusFilter = '';
-    this.serviceLineFilter = '';
-    this.applyFilter();
   }
 
   protected readonly getInitials = getInitials;

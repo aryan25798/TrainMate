@@ -181,11 +181,18 @@ export class AdminDashboardComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    const cached = this.adminService.peekDashboard();
+    if (cached && cached.success && cached.data) {
+      this.dashboard = cached.data;
+      this.isLoading = false;
+    }
     this.loadData();
   }
 
   loadData(): void {
-    this.isLoading = true;
+    if (!this.dashboard) {
+      this.isLoading = true;
+    }
     this.hasError = false;
 
     this.adminService.getDashboard().subscribe({
@@ -197,7 +204,9 @@ export class AdminDashboardComponent implements OnInit {
       },
       error: () => {
         this.isLoading = false;
-        this.hasError = true;
+        if (!this.dashboard) {
+          this.hasError = true;
+        }
       }
     });
   }

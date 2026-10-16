@@ -13,6 +13,7 @@ import java.util.List;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
     List<Notification> findByReceiverUserIdOrderByCreatedDateDesc(Long receiverUserId);
+    org.springframework.data.domain.Page<Notification> findByReceiverUserIdOrderByCreatedDateDesc(Long receiverUserId, org.springframework.data.domain.Pageable pageable);
     long countByReceiverUserId(Long receiverUserId);
     List<Notification> findByCohort(com.trainmate.entity.Cohort cohort);
     void deleteByCohort(com.trainmate.entity.Cohort cohort);

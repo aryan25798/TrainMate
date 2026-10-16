@@ -46,10 +46,20 @@ public class CoachService {
 
     @Transactional(readOnly = true)
     public CoachDashboardResponse getDashboard(Long coachUserId) {
-        long totalCohorts = cohortRepository.countByCoachUserId(coachUserId);
-        long assigned = cohortRepository.countByCoachUserIdAndStatus(coachUserId, CohortStatus.ASSIGNED);
-        long unassigned = cohortRepository.countByCoachUserIdAndStatus(coachUserId, CohortStatus.UNASSIGNED);
-        long upcoming = cohortRepository.countByCoachUserIdAndStartDateAfter(coachUserId, LocalDate.now());
+        LocalDate today = LocalDate.now();
+        Object[] metrics = cohortRepository.getCoachDashboardMetrics(coachUserId, today);
+        long totalCohorts = 0L;
+        long assigned = 0L;
+        long unassigned = 0L;
+        long upcoming = 0L;
+
+        if (metrics != null && metrics.length > 0) {
+            Object[] row = (metrics[0] instanceof Object[]) ? (Object[]) metrics[0] : metrics;
+            totalCohorts = row[0] != null ? ((Number) row[0]).longValue() : 0L;
+            assigned = row[1] != null ? ((Number) row[1]).longValue() : 0L;
+            unassigned = row[2] != null ? ((Number) row[2]).longValue() : 0L;
+            upcoming = row[3] != null ? ((Number) row[3]).longValue() : 0L;
+        }
 
         return new CoachDashboardResponse(totalCohorts, assigned, unassigned, upcoming);
     }
@@ -61,9 +71,17 @@ public class CoachService {
     }
 
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<CohortResponse> getCohortsPaged(Long coachUserId, org.springframework.data.domain.Pageable pageable) {
-        return cohortRepository.findByCoachUserIdOrderByCreatedDateDesc(coachUserId, pageable)
+    public org.springframework.data.domain.Page<CohortResponse> getCohortsPaged(
+            Long coachUserId, String query, CohortStatus status, String serviceLine, org.springframework.data.domain.Pageable pageable) {
+        String cleanQuery = (query != null && !query.trim().isEmpty()) ? query.trim() : null;
+        String cleanServiceLine = (serviceLine != null && !serviceLine.trim().isEmpty()) ? serviceLine.trim() : null;
+        return cohortRepository.findByCoachFiltered(coachUserId, cleanQuery, status, cleanServiceLine, pageable)
                 .map(cohortService::mapToResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<CohortResponse> getCohortsPaged(Long coachUserId, org.springframework.data.domain.Pageable pageable) {
+        return getCohortsPaged(coachUserId, null, null, null, pageable);
     }
 
     public CohortUploadResponse uploadCohorts(Long coachUserId, MultipartFile file) {

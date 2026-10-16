@@ -38,12 +38,22 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("All cohorts retrieved successfully", cohorts));
     }
 
-    @Operation(summary = "Get all cohorts with pagination")
+    @Operation(summary = "Get all cohorts with server-side pagination, search and filtering")
     @GetMapping("/cohorts/paged")
     public ResponseEntity<ApiResponse<Page<CohortResponse>>> getAllCohortsPaged(
-            @PageableDefault(size = 20, sort = "createdDate") Pageable pageable) {
-        Page<CohortResponse> cohorts = adminService.getAllCohortsPaged(pageable);
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) com.trainmate.entity.CohortStatus status,
+            @RequestParam(required = false) String serviceLine,
+            @PageableDefault(size = 20, sort = "createdDate", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+        Page<CohortResponse> cohorts = adminService.getAllCohortsPaged(query, status, serviceLine, pageable);
         return ResponseEntity.ok(ApiResponse.success("Cohorts retrieved successfully", cohorts));
+    }
+
+    @Operation(summary = "Get distinct service lines across all cohorts")
+    @GetMapping("/cohorts/service-lines")
+    public ResponseEntity<ApiResponse<List<String>>> getDistinctServiceLines() {
+        List<String> serviceLines = adminService.getDistinctServiceLines();
+        return ResponseEntity.ok(ApiResponse.success("Service lines retrieved successfully", serviceLines));
     }
 
     @GetMapping("/trainers")
@@ -52,11 +62,12 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("All trainers retrieved successfully", trainers));
     }
 
-    @Operation(summary = "Get all trainers with pagination")
+    @Operation(summary = "Get all trainers with server-side pagination and search")
     @GetMapping("/trainers/paged")
     public ResponseEntity<ApiResponse<Page<TrainerResponse>>> getAllTrainersPaged(
+            @RequestParam(required = false) String search,
             @PageableDefault(size = 20, sort = "id") Pageable pageable) {
-        Page<TrainerResponse> trainers = adminService.getAllTrainersPaged(pageable);
+        Page<TrainerResponse> trainers = adminService.getAllTrainersPaged(search, pageable);
         return ResponseEntity.ok(ApiResponse.success("Trainers retrieved successfully", trainers));
     }
 

@@ -4,6 +4,7 @@ import com.trainmate.entity.Cohort;
 import com.trainmate.entity.CohortStatus;
 import com.trainmate.entity.Trainer;
 import com.trainmate.repository.CohortRepository;
+import com.trainmate.repository.NotificationRepository;
 import com.trainmate.repository.TrainerRepository;
 import com.trainmate.service.NotificationService;
 import org.springframework.stereotype.Service;
@@ -22,16 +23,20 @@ public class TrainerAllocationService {
     private final AllocationScorer allocationScorer;
     private final NotificationService notificationService;
 
+    private final NotificationRepository notificationRepository;
+
     public TrainerAllocationService(
             TrainerRepository trainerRepository,
             CohortRepository cohortRepository,
             AllocationScorer allocationScorer,
-            NotificationService notificationService
+            NotificationService notificationService,
+            NotificationRepository notificationRepository
     ) {
         this.trainerRepository = trainerRepository;
         this.cohortRepository = cohortRepository;
         this.allocationScorer = allocationScorer;
         this.notificationService = notificationService;
+        this.notificationRepository = notificationRepository;
     }
 
     /**
@@ -129,5 +134,98 @@ public class TrainerAllocationService {
         notificationService.notifyTrainerAssigned(lockedCohort, lockedWinner);
 
         return winner;
+    }
+
+    /**
+     * High-throughput Batch Allocation Engine.
+     * Evaluates cohorts in strict FIFO order, balances workloads dynamically in-memory,
+     * and performs atomic batch saves for cohorts, updated trainers, and notifications.
+     */
+    @Transactional
+    public List<Cohort> allocateBatch(List<Cohort> cohorts) {
+        if (cohorts == null || cohorts.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 1. First persist the cohorts in batch so they obtain IDs and DB records
+        List<Cohort> savedCohorts = cohortRepository.saveAll(cohorts);
+
+        // 2. Fetch all trainers with their user accounts in 1 single join fetch query
+        List<Trainer> trainers = trainerRepository.findAllWithUser();
+
+        List<com.trainmate.entity.Notification> notifications = new ArrayList<>();
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+        // 3. Process each cohort in FIFO order
+        for (Cohort cohort : savedCohorts) {
+            List<TrainerScore> eligibleScores = new ArrayList<>();
+
+            for (Trainer trainer : trainers) {
+                TrainerScore score = allocationScorer.evaluate(trainer, cohort);
+                if (score.isEligible()) {
+                    eligibleScores.add(score);
+                }
+            }
+
+            if (eligibleScores.isEmpty()) {
+                cohort.setStatus(CohortStatus.UNASSIGNED);
+                cohort.setAssignedTrainer(null);
+                cohort.setAllocationScore(null);
+                cohort.setAllocationExplanation("No eligible trainer available matching skills and dates");
+                cohort.setAllocationType("AUTOMATIC");
+                cohort.setAllocationDate(now);
+
+                if (cohort.getCoachUser() != null) {
+                    notifications.add(new com.trainmate.entity.Notification(
+                            cohort, cohort.getCoachUser(), "ALLOCATION_PENDING",
+                            "No eligible trainer was found for cohort " + cohort.getCohortCode() + ". Status set to UNASSIGNED."
+                    ));
+                }
+                continue;
+            }
+
+            // Sort descending: best candidate first (by score, then lower workload)
+            eligibleScores.sort(Comparator
+                    .comparingDouble(TrainerScore::getTotalScore).reversed()
+                    .thenComparingInt(s -> s.getTrainer().getCurrentWorkload()));
+
+            TrainerScore winner = eligibleScores.get(0);
+            Trainer winningTrainer = winner.getTrainer();
+
+            // Assign directly to cohort
+            cohort.setAssignedTrainer(winningTrainer);
+            cohort.setStatus(CohortStatus.ASSIGNED);
+            cohort.setAllocationScore(winner.getTotalScore());
+            cohort.setAllocationExplanation(winner.getScoreBreakdown() != null ? winner.getScoreBreakdown().getExplanation() : "Deterministic 100-point allocation match");
+            cohort.setAllocationType("AUTOMATIC");
+            cohort.setAllocationDate(now);
+
+            // Increment workload immediately in memory for subsequent cohorts in batch
+            winningTrainer.setCurrentWorkload(winningTrainer.getCurrentWorkload() + 1);
+
+            // Notifications
+            if (winningTrainer.getUser() != null) {
+                notifications.add(new com.trainmate.entity.Notification(
+                        cohort, winningTrainer.getUser(), "COHORT_ASSIGNMENT",
+                        "You have been assigned to lead cohort " + cohort.getCohortCode() + " (" + cohort.getRequiredSkill() + ")."
+                ));
+            }
+            if (cohort.getCoachUser() != null) {
+                String trainerName = winningTrainer.getUser() != null ? winningTrainer.getUser().getName() : "Assigned Trainer";
+                notifications.add(new com.trainmate.entity.Notification(
+                        cohort, cohort.getCoachUser(), "TRAINER_ASSIGNED",
+                        trainerName + " has been assigned to your cohort " + cohort.getCohortCode() + "."
+                ));
+            }
+        }
+
+        // 4. Batch flush all entities
+        List<Cohort> finalCohorts = cohortRepository.saveAll(savedCohorts);
+        trainerRepository.saveAll(trainers);
+        if (!notifications.isEmpty()) {
+            notificationRepository.saveAll(notifications);
+        }
+
+        return finalCohorts;
     }
 }

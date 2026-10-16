@@ -67,17 +67,27 @@ public class AdminService {
     public AdminDashboardResponse getDashboard() {
         AdminDashboardResponse resp = new AdminDashboardResponse();
 
-        resp.setTotalCohorts(cohortRepository.count());
-        resp.setAssignedCohorts(cohortRepository.countByStatus(CohortStatus.ASSIGNED));
-        resp.setUnassignedCohorts(cohortRepository.countByStatus(CohortStatus.UNASSIGNED));
-        resp.setPendingCohorts(cohortRepository.countByStatus(CohortStatus.PENDING));
-        resp.setActiveCohorts(cohortRepository.countByStatus(CohortStatus.ACTIVE));
-        resp.setCompletedCohorts(cohortRepository.countByStatus(CohortStatus.COMPLETED));
+        Object[] cohortMetrics = cohortRepository.getAdminCohortMetrics();
+        if (cohortMetrics != null && cohortMetrics.length > 0) {
+            Object[] row = (cohortMetrics[0] instanceof Object[]) ? (Object[]) cohortMetrics[0] : cohortMetrics;
+            resp.setTotalCohorts(row[0] != null ? ((Number) row[0]).longValue() : 0L);
+            resp.setAssignedCohorts(row[1] != null ? ((Number) row[1]).longValue() : 0L);
+            resp.setUnassignedCohorts(row[2] != null ? ((Number) row[2]).longValue() : 0L);
+            resp.setPendingCohorts(row[3] != null ? ((Number) row[3]).longValue() : 0L);
+            resp.setActiveCohorts(row[4] != null ? ((Number) row[4]).longValue() : 0L);
+            resp.setCompletedCohorts(row[5] != null ? ((Number) row[5]).longValue() : 0L);
+        }
 
         LocalDate today = LocalDate.now();
-        resp.setTotalTrainers(trainerRepository.count());
-        resp.setAvailableTrainers(trainerRepository.countAvailableTrainers(today));
-        resp.setUnavailableTrainers(trainerRepository.countUnavailableTrainers(today));
+        Object[] trainerMetrics = trainerRepository.getAdminTrainerMetrics(today);
+        if (trainerMetrics != null && trainerMetrics.length > 0) {
+            Object[] row = (trainerMetrics[0] instanceof Object[]) ? (Object[]) trainerMetrics[0] : trainerMetrics;
+            long total = row[0] != null ? ((Number) row[0]).longValue() : 0L;
+            long available = row[1] != null ? ((Number) row[1]).longValue() : 0L;
+            resp.setTotalTrainers(total);
+            resp.setAvailableTrainers(available);
+            resp.setUnavailableTrainers(Math.max(0L, total - available));
+        }
 
         return resp;
     }
@@ -90,9 +100,23 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
+    public Page<CohortResponse> getAllCohortsPaged(String query, CohortStatus status, String serviceLine, Pageable pageable) {
+        String cleanQuery = (query != null && !query.trim().isEmpty()) ? query.trim() : null;
+        String cleanServiceLine = (serviceLine != null && !serviceLine.trim().isEmpty()) ? serviceLine.trim() : null;
+        Page<Cohort> page = (cleanQuery != null || status != null || cleanServiceLine != null)
+                ? cohortRepository.findAllFiltered(cleanQuery, status, cleanServiceLine, pageable)
+                : cohortRepository.findAllByOrderByCreatedDateDesc(pageable);
+        return page.map(cohortService::mapToResponse);
+    }
+
+    @Transactional(readOnly = true)
     public Page<CohortResponse> getAllCohortsPaged(Pageable pageable) {
-        return cohortRepository.findAllByOrderByCreatedDateDesc(pageable)
-                .map(cohortService::mapToResponse);
+        return getAllCohortsPaged(null, null, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> getDistinctServiceLines() {
+        return cohortRepository.findDistinctServiceLines();
     }
 
     @Transactional(readOnly = true)
@@ -104,10 +128,18 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public Page<TrainerResponse> getAllTrainersPaged(Pageable pageable) {
+    public Page<TrainerResponse> getAllTrainersPaged(String search, Pageable pageable) {
         Map<Long, Integer> counts = getTrainerCohortCounts();
-        return trainerRepository.findAll(pageable)
-                .map((Trainer t) -> this.mapToTrainerResponse(t, counts.getOrDefault(t.getId(), 0)));
+        String cleanSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        Page<Trainer> page = (cleanSearch != null)
+                ? trainerRepository.findAllFiltered(cleanSearch, pageable)
+                : trainerRepository.findAll(pageable);
+        return page.map((Trainer t) -> this.mapToTrainerResponse(t, counts.getOrDefault(t.getId(), 0)));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<TrainerResponse> getAllTrainersPaged(Pageable pageable) {
+        return getAllTrainersPaged(null, pageable);
     }
 
     private Map<Long, Integer> getTrainerCohortCounts() {

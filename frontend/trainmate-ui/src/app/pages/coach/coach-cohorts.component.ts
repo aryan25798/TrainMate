@@ -1,11 +1,13 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { CoachService } from '../../services/coach.service';
 import { CohortService } from '../../services/cohort.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
-import { Cohort } from '../../models/models';
+import { Cohort, PagedResponse } from '../../models/models';
 import { CohortDetailsModalComponent } from '../../shared/cohort-details-modal.component';
 import { CreateCohortModalComponent } from '../../shared/create-cohort-modal.component';
 import { EditCohortModalComponent } from '../../shared/edit-cohort-modal.component';
@@ -31,7 +33,10 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
     <div>
       <div class="page-header">
         <div>
-          <h1 class="page-title">My Managed Cohorts</h1>
+          <h1 class="page-title d-flex align-items-center gap-2">
+            <span>My Managed Cohorts</span>
+            <span *ngIf="isRefreshing" class="spinner-border spinner-border-sm text-primary" title="Syncing in background..."></span>
+          </h1>
           <p class="page-subtitle">View, edit, reallocate, and monitor cohorts assigned to your coaching portfolio.</p>
         </div>
         <div class="d-flex align-items-center gap-2">
@@ -60,12 +65,12 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
                 class="form-control"
                 placeholder="Search by cohort code, skill, or trainer..."
                 [(ngModel)]="searchQuery"
-                (ngModelChange)="applyFilter()"
+                (ngModelChange)="onSearchInput($event)"
               />
             </div>
           </div>
           <div class="col-md-3">
-            <select class="form-select" [(ngModel)]="statusFilter" (ngModelChange)="applyFilter()">
+            <select class="form-select" [(ngModel)]="statusFilter" (ngModelChange)="onFilterChange()">
               <option value="">All Statuses</option>
               <option value="ASSIGNED">Assigned</option>
               <option value="UNASSIGNED">Unassigned</option>
@@ -83,9 +88,9 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
               (click)="resetFilters()">
               <i class="bi bi-x-circle me-1"></i>Reset Filters
             </button>
-            <span class="text-muted small" *ngIf="pagedData">
-              Showing {{ (pagedData.number || 0) * (pagedData.size || 15) + 1 }} to 
-              {{ Math.min((pagedData.number || 0) * (pagedData.size || 15) + (pagedData.numberOfElements || 0), pagedData.totalElements || 0) }} 
+            <span class="text-muted small" *ngIf="pagedData && pagedData.totalElements > 0">
+              Showing {{ (pagedData.number || 0) * (pagedData.size || 20) + 1 }} to 
+              {{ Math.min((pagedData.number || 0) * (pagedData.size || 20) + (pagedData.numberOfElements || 0), pagedData.totalElements || 0) }} 
               of {{ pagedData.totalElements || 0 }}
             </span>
           </div>
@@ -98,7 +103,7 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
         title="Unable to load cohorts"
         message="A network error occurred or the cloud server is waking up. Click below to retry."
         [isRetrying]="isLoading"
-        (retry)="loadCohorts()">
+        (retry)="loadCohorts(true)">
       </app-error-card>
 
       <!-- Cohorts Table -->
@@ -121,32 +126,35 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
                 <th>Service Line</th>
                 <th>Required Skill</th>
                 <th class="text-nowrap">Trainees</th>
-                <th class="text-nowrap">Duration</th>
-                <th>Vertical / Loc</th>
                 <th>Assigned Trainer</th>
+                <th class="text-nowrap">Duration</th>
                 <th class="text-nowrap">Status</th>
                 <th class="text-end text-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody>
               <!-- Skeleton Loading Rows -->
-              <ng-container *ngIf="isLoading">
-                <tr *ngFor="let i of [1,2,3,4,5,6]">
+              <ng-container *ngIf="isLoading && cohorts.length === 0">
+                <tr *ngFor="let i of [1,2,3,4,5]">
                   <td class="text-center"><div class="skeleton-shimmer" style="width:16px;height:16px;border-radius:4px;"></div></td>
                   <td><div class="skeleton-shimmer" style="width:100px;height:16px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:60px;height:16px;border-radius:4px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:110px;height:20px;border-radius:12px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:30px;height:16px;border-radius:4px;"></div></td>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="skeleton-shimmer" style="width:28px;height:28px;border-radius:50%;"></div>
+                      <div class="skeleton-shimmer" style="width:75px;height:14px;border-radius:4px;"></div>
+                    </div>
+                  </td>
                   <td><div class="skeleton-shimmer" style="width:80px;height:14px;border-radius:4px;"></div></td>
-                  <td><div class="skeleton-shimmer" style="width:70px;height:20px;border-radius:12px;"></div></td>
-                  <td><div class="skeleton-shimmer" style="width:30px;height:14px;border-radius:4px;"></div></td>
-                  <td><div class="skeleton-shimmer" style="width:85px;height:14px;border-radius:4px;"></div></td>
-                  <td><div class="skeleton-shimmer" style="width:90px;height:14px;border-radius:4px;"></div></td>
-                  <td><div class="skeleton-shimmer" style="width:110px;height:24px;border-radius:6px;"></div></td>
-                  <td><div class="skeleton-shimmer" style="width:75px;height:24px;border-radius:6px;"></div></td>
-                  <td class="text-end"><div class="skeleton-shimmer" style="width:80px;height:26px;border-radius:6px;"></div></td>
+                  <td><div class="skeleton-shimmer" style="width:70px;height:22px;border-radius:6px;"></div></td>
+                  <td class="text-end"><div class="skeleton-shimmer" style="width:65px;height:26px;border-radius:6px;"></div></td>
                 </tr>
               </ng-container>
 
-              <ng-container *ngIf="!isLoading">
-              <tr *ngFor="let c of filteredCohorts" [class.table-active]="selectedCohortIds.has(c.id)">
+              <ng-container *ngIf="cohorts.length > 0">
+              <tr *ngFor="let c of cohorts" [class.table-active]="selectedCohortIds.has(c.id)">
                 <td class="text-center" data-label="Select">
                   <input
                     type="checkbox"
@@ -160,11 +168,6 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
                 <td class="text-nowrap" data-label="Service Line">{{ c.serviceLine }}</td>
                 <td data-label="Required Skill"><span class="badge-tag">{{ c.requiredSkill }}</span></td>
                 <td class="text-nowrap" data-label="Trainees">{{ c.numberOfTrainees }}</td>
-                <td class="text-nowrap" data-label="Duration">
-                  <div class="fw-medium small text-dark">{{ c.startDate }}</div>
-                  <small class="text-muted">{{ c.endDate }}</small>
-                </td>
-                <td class="text-nowrap" data-label="Vertical / Location">{{ c.vertical }} - {{ c.location }}</td>
                 <td class="text-nowrap" data-label="Assigned Trainer">
                   <div *ngIf="c.assignedTrainerName" class="d-flex align-items-center gap-2">
                     <span class="trainer-avatar">{{ getInitials(c.assignedTrainerName) }}</span>
@@ -178,6 +181,10 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
                   <span *ngIf="!c.assignedTrainerName" class="badge-status badge-unassigned">
                     Unassigned
                   </span>
+                </td>
+                <td class="text-nowrap" data-label="Duration">
+                  <div class="fw-medium small text-dark">{{ c.startDate }}</div>
+                  <small class="text-muted">{{ c.endDate }}</small>
                 </td>
                 <td class="text-nowrap" data-label="Status">
                   <select
@@ -196,15 +203,15 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
                 </td>
                 <td class="text-end text-nowrap action-cell" data-label="Actions">
                   <div class="action-btn-group" role="group" [attr.aria-label]="'Actions for cohort ' + c.cohortCode">
-                    <button class="action-btn btn-view" title="View 100-Point Breakdown" (click)="selectedCohort = c" aria-label="View cohort details">
+                    <button class="action-btn btn-view" (click)="selectedCohort = c" title="View Details" aria-label="View cohort details">
                       <i class="bi bi-eye" aria-hidden="true"></i>
                     </button>
-                    <button class="action-btn btn-edit" title="Edit Cohort" (click)="editingCohort = c" aria-label="Edit cohort">
+                    <button class="action-btn btn-edit" (click)="editingCohort = c" title="Edit Cohort" aria-label="Edit cohort">
                       <i class="bi bi-pencil" aria-hidden="true"></i>
                     </button>
                     <button
                       class="action-btn btn-reallocate"
-                      title="Re-run 100-Point Allocation Engine"
+                      title="Re-run Allocation"
                       (click)="onReallocate(c)"
                       [disabled]="reallocatingId === c.id"
                       aria-label="Reallocate trainer"
@@ -212,30 +219,26 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
                       <span *ngIf="reallocatingId === c.id" class="spinner-border spinner-border-sm" style="width: 14px; height: 14px;" aria-hidden="true"></span>
                       <i *ngIf="reallocatingId !== c.id" class="bi bi-arrow-repeat" aria-hidden="true"></i>
                     </button>
-                    <button class="action-btn btn-delete" title="Delete Cohort" (click)="cohortToDelete = c" aria-label="Delete cohort">
+                    <button class="action-btn btn-delete" (click)="cohortToDelete = c" title="Delete Cohort" aria-label="Delete cohort">
                       <i class="bi bi-trash" aria-hidden="true"></i>
                     </button>
                   </div>
                 </td>
               </tr>
-              <tr *ngIf="filteredCohorts.length === 0">
+              </ng-container>
+
+              <tr *ngIf="!isLoading && cohorts.length === 0">
                 <td colspan="9" class="text-center py-5">
                   <div class="d-flex flex-column align-items-center justify-content-center">
-                    <i class="bi bi-collection text-muted opacity-50 mb-2" style="font-size: 2.5rem;"></i>
-                    <h6 class="text-dark fw-bold mb-1">No cohorts found</h6>
-                    <p class="text-muted small mb-3">No cohorts match your current search and status filters.</p>
-                    <div class="d-flex gap-2">
-                      <button class="btn btn-sm btn-outline-primary" *ngIf="searchQuery || statusFilter" (click)="searchQuery = ''; statusFilter = ''">
-                        <i class="bi bi-x-circle me-1"></i> Clear Filters
-                      </button>
-                      <button class="btn btn-sm btn-primary-custom" (click)="showCreateModal = true">
-                        <i class="bi bi-plus-circle-fill me-1"></i> Create Cohort
-                      </button>
-                    </div>
+                    <i class="bi bi-diagram-3 text-muted opacity-50 mb-2" style="font-size: 2.5rem;"></i>
+                    <h6 class="text-dark fw-bold mb-1">No matching cohorts</h6>
+                    <p class="text-muted small mb-3">No cohorts match your current search and filter settings.</p>
+                    <button class="btn btn-sm btn-outline-primary" *ngIf="searchQuery || statusFilter" (click)="resetFilters()">
+                      <i class="bi bi-x-circle me-1"></i> Clear Filters
+                    </button>
                   </div>
                 </td>
               </tr>
-              </ng-container>
             </tbody>
           </table>
         </div>
@@ -271,18 +274,22 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
           </ul>
         </nav>
         <div class="d-flex justify-content-between align-items-center mt-2">
-          <select class="form-select form-select-sm w-auto" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange($event)" style="width: 80px;">
-            <option [ngValue]="10">10</option>
-            <option [ngValue]="15">15</option>
-            <option [ngValue]="25">25</option>
-            <option [ngValue]="50">50</option>
-          </select>
-          <small class="text-muted">Page {{ pagedData.number + 1 }} of {{ pagedData.totalPages }}</small>
+          <div class="d-flex align-items-center gap-2">
+            <label class="small text-muted mb-0">Show</label>
+            <select class="form-select form-select-sm w-auto" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange($event)">
+              <option [value]="10">10</option>
+              <option [value]="20">20</option>
+              <option [value]="50">50</option>
+              <option [value]="100">100</option>
+            </select>
+            <label class="small text-muted mb-0">per page</label>
+          </div>
+          <small class="text-muted">Page {{ (pagedData.number || 0) + 1 }} of {{ pagedData.totalPages || 1 }} ({{ pagedData.totalElements || 0 }} total)</small>
         </div>
       </div>
     </div>
 
-    <!-- Cohort Details Modal with 100-Point Score Breakdown -->
+    <!-- Cohort Details Modal -->
     <app-cohort-details-modal
       *ngIf="selectedCohort"
       [cohort]="selectedCohort"
@@ -304,11 +311,11 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
       (updated)="onCohortUpdated($event)">
     </app-edit-cohort-modal>
 
-    <!-- Confirm Delete Modal -->
+    <!-- Confirm Single Delete Modal -->
     <app-confirm-modal
       *ngIf="cohortToDelete"
       title="Delete Cohort"
-      [message]="'Are you sure you want to delete cohort ' + cohortToDelete.cohortCode + '? If a trainer was assigned, their workload capacity will be automatically released back to the pool.'"
+      [message]="'Are you sure you want to delete cohort ' + cohortToDelete.cohortCode + '? If a trainer was assigned, their capacity will be released.'"
       confirmText="Yes, Delete Cohort"
       [isDanger]="true"
       (cancel)="cohortToDelete = null"
@@ -318,9 +325,9 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
     <!-- Confirm Bulk Delete Modal -->
     <app-confirm-modal
       *ngIf="showBulkDeleteConfirm"
-      title="Delete Selected Cohorts"
-      [message]="'Are you sure you want to permanently delete the ' + selectedCohortIds.size + ' selected cohorts? Any assigned trainer workload capacity will be automatically released back to the pool.'"
-      confirmText="Yes, Delete All Selected"
+      title="Delete Multiple Cohorts"
+      [message]="'Are you sure you want to delete ' + selectedCohortIds.size + ' selected cohort(s)? Any assigned trainers will have their workloads released.'"
+      confirmText="Yes, Delete Selected"
       [isDanger]="true"
       (cancel)="showBulkDeleteConfirm = false"
       (confirm)="confirmBulkDelete()">
@@ -328,15 +335,18 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
   `,
   styles: [`
     .skeleton-shimmer {
-      background: linear-gradient(90deg, #edf2f7 25%, #e2e8f0 50%, #edf2f7 75%);
+      background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
       background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
+      animation: shimmer 1.5s infinite ease-in-out;
       display: inline-block;
+      vertical-align: middle;
     }
+
     @keyframes shimmer {
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
+
     @media (prefers-reduced-motion: reduce) {
       .skeleton-shimmer {
         animation: none;
@@ -345,12 +355,14 @@ import { ErrorCardComponent } from '../../shared/error-card.component';
     }
   `]
 })
-export class CoachCohortsComponent implements OnInit {
+export class CoachCohortsComponent implements OnInit, OnDestroy {
   cohorts: Cohort[] = [];
   searchQuery: string = '';
   statusFilter: string = '';
   isLoading: boolean = true;
+  isRefreshing: boolean = false;
   hasError: boolean = false;
+
   selectedCohort: Cohort | null = null;
   editingCohort: Cohort | null = null;
   cohortToDelete: Cohort | null = null;
@@ -358,9 +370,14 @@ export class CoachCohortsComponent implements OnInit {
   showBulkDeleteConfirm: boolean = false;
   selectedCohortIds: Set<number> = new Set<number>();
   reallocatingId: number | null = null;
-  pagedData: any = null;
+  pagedData: PagedResponse<Cohort> | null = null;
   currentPage: number = 0;
-  pageSize: number = 15;
+  pageSize: number = 20;
+  sortBy: string = 'createdDate,desc';
+
+  private searchSubject = new Subject<string>();
+  private searchSub?: Subscription;
+
   protected readonly Math = Math;
 
   constructor(
@@ -371,71 +388,150 @@ export class CoachCohortsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    // 1. Restore persistent state
+    const state = this.coachService.cohortsState;
+    this.currentPage = state.page;
+    this.pageSize = state.size;
+    this.sortBy = state.sort;
+    this.searchQuery = state.query;
+    this.statusFilter = state.status;
+
+    // 2. Debounced search subscription
+    this.searchSub = this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged()
+    ).subscribe(term => {
+      this.searchQuery = term;
+      this.currentPage = 0;
+      this.syncState();
+      this.loadCohorts();
+    });
+
+    // 3. Instant cache peek
+    const user = this.authService.currentUserValue;
+    const coachId = user?.coachId ?? user?.userId;
+    if (coachId) {
+      const cached = this.coachService.peekCohortsPaged(
+        coachId,
+        this.searchQuery,
+        this.statusFilter,
+        undefined,
+        this.currentPage,
+        this.pageSize,
+        this.sortBy
+      );
+      if (cached && cached.success && cached.data) {
+        this.pagedData = cached.data;
+        this.cohorts = cached.data.content;
+        this.isLoading = false;
+        this.isRefreshing = true;
+      }
+    }
+
     this.loadCohorts();
   }
 
-  loadCohorts(): void {
+  ngOnDestroy(): void {
+    this.searchSub?.unsubscribe();
+  }
+
+  onSearchInput(val: string): void {
+    this.searchSubject.next(val);
+  }
+
+  onFilterChange(): void {
+    this.currentPage = 0;
+    this.syncState();
+    this.loadCohorts();
+  }
+
+  resetFilters(): void {
+    this.searchQuery = '';
+    this.statusFilter = '';
+    this.currentPage = 0;
+    this.syncState();
+    this.loadCohorts();
+  }
+
+  private syncState(): void {
+    this.coachService.cohortsState = {
+      page: this.currentPage,
+      size: this.pageSize,
+      sort: this.sortBy,
+      query: this.searchQuery,
+      status: this.statusFilter,
+      serviceLine: ''
+    };
+  }
+
+  loadCohorts(forceRefresh: boolean = false): void {
     const user = this.authService.currentUserValue;
     const coachId = user?.coachId ?? user?.userId;
     if (!coachId) return;
 
-    this.isLoading = true;
+    if (this.cohorts.length === 0) {
+      this.isLoading = true;
+    } else {
+      this.isRefreshing = true;
+    }
     this.hasError = false;
 
-    this.coachService.getCohortsPaged(coachId, this.currentPage, this.pageSize).subscribe({
+    this.coachService.getCohortsPaged(
+      coachId,
+      this.searchQuery,
+      this.statusFilter,
+      undefined,
+      this.currentPage,
+      this.pageSize,
+      this.sortBy,
+      forceRefresh
+    ).subscribe({
       next: res => {
-        this.isLoading = false;
-        if (res.success) {
+        if (res.success && res.data) {
           this.pagedData = res.data;
           this.cohorts = res.data.content;
           this.selectedCohortIds.clear();
-          this.applyFilter();
-          this.hasError = false;
         }
+        this.isLoading = false;
+        this.isRefreshing = false;
       },
       error: () => {
-        // Fallback to unpaged if necessary
-        this.coachService.getCohorts(coachId).subscribe({
-          next: fallbackRes => {
-            this.isLoading = false;
-            if (fallbackRes.success) {
-              this.cohorts = fallbackRes.data;
-              this.selectedCohortIds.clear();
-              this.applyFilter();
-              this.hasError = false;
-            }
-          },
-          error: () => {
-            this.isLoading = false;
-            this.hasError = true;
-          }
-        });
+        this.isLoading = false;
+        this.isRefreshing = false;
+        if (this.cohorts.length === 0) {
+          this.hasError = true;
+        }
       }
     });
   }
 
   onCohortCreated(newCohort: Cohort): void {
-    this.loadCohorts();
+    this.loadCohorts(true);
     this.selectedCohort = newCohort;
     this.toastService.success(`Cohort ${newCohort.cohortCode} created & auto-allocated!`);
   }
 
   onCohortUpdated(updated: Cohort): void {
     this.editingCohort = null;
-    this.loadCohorts();
+    this.loadCohorts(true);
   }
 
   onStatusChange(c: Cohort, newStatus: string): void {
     if (c.status === newStatus) return;
+    const prev = c.status;
+    c.status = newStatus as any;
     this.cohortService.updateCohortStatus(c.id, newStatus).subscribe({
       next: res => {
         if (res.success) {
-          c.status = newStatus as any;
           this.toastService.info(`Cohort ${c.cohortCode} status changed to ${newStatus}`);
-          this.loadCohorts();
+          this.loadCohorts(true);
+        } else {
+          c.status = prev;
+          this.toastService.error(`Failed to update status.`);
         }
       },
       error: () => {
+        c.status = prev;
         this.toastService.error(`Failed to update status.`);
       }
     });
@@ -448,7 +544,7 @@ export class CoachCohortsComponent implements OnInit {
         this.reallocatingId = null;
         if (res.success) {
           this.toastService.success(`Re-allocated ${c.cohortCode}: Assigned to ${res.data.assignedTrainerName || 'Unassigned'}`);
-          this.loadCohorts();
+          this.loadCohorts(true);
           this.selectedCohort = res.data;
         }
       },
@@ -465,20 +561,18 @@ export class CoachCohortsComponent implements OnInit {
     const id = this.cohortToDelete.id;
     this.cohortToDelete = null;
 
-    // Optimistic UI update: Instantly remove cohort from view in memory
     const previousCohorts = [...this.cohorts];
     this.cohorts = this.cohorts.filter(c => c.id !== id);
-    this.applyFilter();
 
     this.cohortService.deleteCohort(id).subscribe({
       next: res => {
         if (res.success) {
           this.toastService.success(`Cohort ${code} deleted and trainer workload capacity released.`);
+          this.loadCohorts(true);
         }
       },
       error: () => {
         this.cohorts = previousCohorts;
-        this.applyFilter();
         this.toastService.error(`Failed to delete cohort.`);
       }
     });
@@ -493,23 +587,20 @@ export class CoachCohortsComponent implements OnInit {
   }
 
   toggleSelectAll(): void {
-    const cohorts = this.filteredCohorts;
     if (this.isAllSelected()) {
       this.selectedCohortIds.clear();
     } else {
-      cohorts.forEach(c => this.selectedCohortIds.add(c.id));
+      this.cohorts.forEach(c => this.selectedCohortIds.add(c.id));
     }
   }
 
   isAllSelected(): boolean {
-    const cohorts = this.filteredCohorts;
-    return cohorts.length > 0 && cohorts.every(c => this.selectedCohortIds.has(c.id));
+    return this.cohorts.length > 0 && this.cohorts.every(c => this.selectedCohortIds.has(c.id));
   }
 
   isPartiallySelected(): boolean {
-    const cohorts = this.filteredCohorts;
-    const selectedCount = cohorts.filter(c => this.selectedCohortIds.has(c.id)).length;
-    return selectedCount > 0 && selectedCount < cohorts.length;
+    const selectedCount = this.cohorts.filter(c => this.selectedCohortIds.has(c.id)).length;
+    return selectedCount > 0 && selectedCount < this.cohorts.length;
   }
 
   confirmBulkDelete(): void {
@@ -517,36 +608,21 @@ export class CoachCohortsComponent implements OnInit {
     this.showBulkDeleteConfirm = false;
     if (ids.length === 0) return;
 
-    // Optimistic UI update: Instantly remove deleted cohorts from view in memory
     const previousCohorts = [...this.cohorts];
     const previousSelected = new Set(this.selectedCohortIds);
     this.selectedCohortIds.clear();
     this.cohorts = this.cohorts.filter(c => !ids.includes(c.id));
-    this.applyFilter();
 
     this.cohortService.bulkDeleteCohorts(ids).subscribe({
       next: res => {
         if (res.success) {
           this.toastService.success(`Successfully deleted ${res.data} cohort(s) and released trainer workloads.`);
-          const user = this.authService.currentUserValue;
-          const coachId = user?.coachId ?? user?.userId;
-          if (coachId) {
-            this.coachService.getCohortsPaged(coachId, this.currentPage, this.pageSize).subscribe({
-              next: r => {
-                if (r.success) {
-                  this.pagedData = r.data;
-                  this.cohorts = r.data.content;
-                  this.applyFilter();
-                }
-              }
-            });
-          }
+          this.loadCohorts(true);
         }
       },
       error: () => {
         this.cohorts = previousCohorts;
         this.selectedCohortIds = previousSelected;
-        this.applyFilter();
         this.toastService.error(`Failed to delete selected cohorts. Changes were rolled back.`);
       }
     });
@@ -554,12 +630,14 @@ export class CoachCohortsComponent implements OnInit {
 
   onPageChange(page: number): void {
     this.currentPage = page;
+    this.syncState();
     this.loadCohorts();
   }
 
   onPageSizeChange(size: number): void {
-    this.pageSize = size;
+    this.pageSize = Number(size);
     this.currentPage = 0;
+    this.syncState();
     this.loadCohorts();
   }
 
@@ -581,28 +659,6 @@ export class CoachCohortsComponent implements OnInit {
       pages.push(i);
     }
     return pages;
-  }
-
-  filteredCohorts: Cohort[] = [];
-
-  applyFilter(): void {
-    const q = this.searchQuery ? this.searchQuery.toLowerCase().trim() : '';
-    this.filteredCohorts = this.cohorts.filter(c => {
-      const matchesSearch = !q ||
-        c.cohortCode.toLowerCase().includes(q) ||
-        c.requiredSkill.toLowerCase().includes(q) ||
-        (c.assignedTrainerName && c.assignedTrainerName.toLowerCase().includes(q));
-
-      const matchesStatus = !this.statusFilter || c.status === this.statusFilter;
-
-      return matchesSearch && matchesStatus;
-    });
-  }
-
-  resetFilters(): void {
-    this.searchQuery = '';
-    this.statusFilter = '';
-    this.applyFilter();
   }
 
   protected readonly getInitials = getInitials;

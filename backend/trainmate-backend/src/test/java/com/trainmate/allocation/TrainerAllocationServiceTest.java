@@ -38,6 +38,9 @@ class TrainerAllocationServiceTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private com.trainmate.repository.NotificationRepository notificationRepository;
+
     @InjectMocks
     private TrainerAllocationService allocationService;
 
