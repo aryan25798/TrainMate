@@ -108,30 +108,42 @@ Make sure the following tools are installed on your machine:
 
 ---
 
-### Step 1: Start the Local MySQL Database
+### Step 1: Start the Local MySQL Database & Create Database
 
 You can run MySQL either natively or via Docker. Choose whichever option you prefer:
 
-#### Option A: Native Local MySQL (Installed on Windows/Mac/Linux)
-1. Start your local MySQL service.
-2. Open your terminal or MySQL Workbench and run:
+#### Option A: Native Local MySQL (Installed on Windows / Mac / Linux)
+1. Start your local MySQL service (e.g., via Windows Services or MySQL Workbench).
+2. Open your terminal or MySQL Command Line Client:
+   ```bash
+   mysql -u root -p
+   ```
+   *(Enter your MySQL password when prompted, default is `123456`).*
+3. Create the database with one SQL command:
    ```sql
    CREATE DATABASE IF NOT EXISTS trainmate;
    ```
-3. Ensure your MySQL user has access:
+4. Verify it was created:
+   ```sql
+   SHOW DATABASES;
+   EXIT;
+   ```
+   *(Or in **MySQL Workbench**, click the "Create a new schema in the connected server" icon, name it `trainmate`, and click **Apply**).*
+
+5. Ensure your credentials in `backend/trainmate-backend/src/main/resources/application-local.properties` match:
    - **Default user:** `root`
    - **Default password:** `123456`
-   *(If your local MySQL root password is different, you can adjust it in `backend/trainmate-backend/src/main/resources/application-local.properties`).*
+   *(If your local MySQL root password is different, change `spring.datasource.password` in that file).*
 
-#### Option B: Docker MySQL (One Command)
-If you have Docker installed, start an isolated MySQL container with:
+#### Option B: Docker MySQL (One Command - Easiest)
+If you have Docker Desktop running, you can start MySQL and create the database in a single command without installing MySQL locally:
 ```bash
 docker run --name trainmate-mysql -e MYSQL_ROOT_PASSWORD=123456 -e MYSQL_DATABASE=trainmate -p 3306:3306 -d mysql:8.0
 ```
 
 > [!NOTE]  
-> **Automatic Schema & Data Migration:** When Spring Boot starts locally, **Flyway** automatically creates all 4 tables and seeds default demo data. You do not need to manually run SQL scripts!  
-> *(If you ever want to reset the database manually, you can run `database/schema.sql` followed by `database/data.sql`).*
+> **Automatic Schema & Data Migration:** When Spring Boot starts up locally, **Flyway** automatically runs and builds all 4 tables (`users`, `trainer`, `cohort`, `notification`) and automatically seeds all initial demo data. You do **not** need to manually run table creation scripts!  
+> *(If you ever want to reset the database manually from scratch, you can run `SOURCE database/schema.sql;` followed by `SOURCE database/data.sql;` inside MySQL).*
 
 ---
 
@@ -241,6 +253,12 @@ spring.datasource.password=YOUR_MYSQL_PASSWORD
 ### Q: How do I switch between Local Offline Mode and Cloud Mode?
 - **For Offline Local:** Run `npm start` in the frontend directory. Angular uses `environment.development.ts` pointing to `http://localhost:8081/api`.
 - **For Production Cloud:** Running `ng build --configuration production` compiles Angular using `environment.ts` pointing to your cloud Render deployment `https://trainmate-o6tv.onrender.com/api`.
+
+### Q: Does pushing to GitHub automatically deploy to Render?
+**Yes!** Render is connected directly to your GitHub repository (`aryan25798/TrainMate`) on the `main` branch. Every time you push a commit:
+1. GitHub fires a webhook event to Render.
+2. Render automatically triggers a new deployment build.
+3. The latest changes go live automatically at `https://trainmate-o6tv.onrender.com` within 2–3 minutes with zero manual intervention required.
 
 ---
 
